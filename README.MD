@@ -16,11 +16,12 @@ Before running the app, make sure you have the following installed:
 
 ## Instalation
 
-git clone <https://github.com/AiOb4/DueDiligence>
+    git clone https://github.com/AiOb4/DueDiligence
 
-cd <DueDiligence>
+    cd DueDiligence
 
-npm install
+    npm install
 
-npm run dev
+    npm run dev
 
+This should open an electron application with a chat window to talk with ollama
