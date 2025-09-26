@@ -1,0 +1,95 @@
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* spacing between messages */
+}
+
+/* message row wrapper */
+.message {
+  display: flex;
+  width: 100%;
+}
+
+/* user messages align right */
+.message.user {
+  justify-content: flex-end;
+}
+
+/* AI messages align left */
+.message.ai {
+  justify-content: flex-start;
+}
+
+.text-box {
+  max-width: 70%; /* don’t let bubbles span full width */
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+/* distinct bubble colors */
+.message.user .text-box {
+  background-color: #4a90e2; /* bluish for user */
+  color: #fff;
+  border: none;
+}
+
+.message.ai .text-box {
+  background-color: #333;
+  color: #fff;
+  border: 1px solid rgba(105, 105, 105, 0.397);
+}
+
+.chat-input {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #222;
+  padding: 8px;
+  border-top: 1px solid rgba(105, 105, 105, 0.397);
+}
+
+.input-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;           /* centers container horizontally in parent */
+  display: flex;             /* enable flexbox */
+  justify-content: center;   /* center children horizontally */
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box; /* include padding in width */
+  position: center;
+  background-color: #333;
+  color: #fff;
+  padding: 10px 70px 10px 10px; /* padding-right for button space */
+  border: 1px solid rgba(105, 105, 105, 0.397);
+  font-size: 16px;
+  outline: 0;
+  border-radius: 6px;
+}
+
+.chat-send-btn {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #555;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.chat-send-btn:hover {
+  background: #666;
+}
