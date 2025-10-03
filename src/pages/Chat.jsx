@@ -47,18 +47,17 @@ export default function Chat() {
   };
 
   return (
-    <div>
+    <div className = 'chat'>
       <h1>Chat With Team Member</h1>
 
       <div className = 'chat-messages'>
         {responses.map(r => (
-          <div key={r.id}>
+          <div className = 'messageGroup' key={r.id}>
             <Message sender="You" answer={r.prompt} />
             <Message sender="AI" answer={r.answer} />
           </div>
         ))}
       </div>
-
       <ChatInput onSubmit={handleSubmit} />
     </div>
   );
