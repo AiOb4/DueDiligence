@@ -1,8 +1,14 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
 
 const isDev = !app.isPackaged;
 
+function getSccPath() {
+  const binaryName = process.platform === 'win32' ? 'scc.exe' : 'scc';
+  return path.join(app.isPackaged ? process.resourcesPath : __dirname, 'resources', 'scc', binaryName);
+}
 require('dotenv').config();
 
 function createWindow() {
@@ -35,7 +41,33 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC handlers
-ipcMain.handle('ollama', async () => {
+const execPromise = util.promisify(exec);
 
+// IPC handlers
+ipcMain.handle('runCodeCounter', async (event , {dir}) => {
+  const sccPath = getSccPath();
+  
+  try {
+    // Run SCC command
+    const { stdout } = await execPromise(`"${sccPath}" --format json "${dir}"`);
+
+    // Parse JSON
+    const data = JSON.parse(stdout);
+    return { success: true, data };
+  } catch (error) {
+    console.error('SCC error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('selectDirectory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  } else {
+    return null;
+  }
 });

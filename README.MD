@@ -10,7 +10,9 @@ Before running the app, make sure you have the following installed:
 
 1. **Node.js & npm** – [Download here](https://nodejs.org/)  
 2. **Ollama** – Install from the [Ollama website](https://ollama.com/)  
-3. **Gemma3:4b model** – Download via Ollama:
+3. **Gemma3:4b model** – Download via Ollama
+
+Ollama will be bundled or put in the cloud somewhere in production
 
 ---
 
@@ -24,4 +26,4 @@ Before running the app, make sure you have the following installed:
 
     npm run dev
 
-This should open an electron application with a chat window to talk with ollama
+This should open an electron application with a chat window to talk with ollama, and a page to run the scc (code counter)

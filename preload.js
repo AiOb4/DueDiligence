@@ -2,5 +2,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  ollama: () => ipcRenderer.invoke('ollama'),
+  selectDirectory: () => ipcRenderer.invoke('selectDirectory'),
+  runCodeCounter: (dir) => ipcRenderer.invoke('runCodeCounter', {dir}),
 });
