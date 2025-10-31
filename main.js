@@ -72,7 +72,7 @@ ipcMain.handle('selectDirectory', async () => {
   }
 });
 
-const systemPrompt = `
+const SYSTEMPROMPT = `
 You are a member of a professional due diligence team. 
 Your role is to collaborate with colleagues to evaluate companies, projects, and investments. 
 Always respond as a knowledgeable, detail-oriented team member. 
@@ -99,7 +99,7 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
   try {
     const stream = await ollama.chat({
       model: "gemma3:4b",
-      messages: [{ role: "system", content: systemPrompt }, 
+      messages: [{ role: "system", content: SYSTEMPROMPT }, 
                   ...chatHistory,
                   { role: "user", content: promptText }],
       stream: true,
