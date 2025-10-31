@@ -1,0 +1,17 @@
+Open terminal or PowerShell inside the DueDiligenceFrontend folder.
+
+Install project dependencies:
+
+bash
+npm install
+
+
+Running the Frontend Locally
+Start the development server:
+
+bash
+npm run dev
+Open your browser and visit:
+
+http://localhost:3000
+to view the running frontend.
