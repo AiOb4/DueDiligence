@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import '../indexOld.css';
 import ChatInput from '../components/ChatInput';
 import Message from '../components/Message';
 import '../components/chatStyles.css';

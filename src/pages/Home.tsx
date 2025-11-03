@@ -1,14 +1,12 @@
-"use client"
-
 import { useState } from "react"
-import Dashboard from "@components/Dashboard"
-import CodeAnalysis from "@components/CodeAnalysis"
-import DocumentSummarizer from "@components/DocumentSummarizer"
-import PolicyQA from "@components/PolicyQA"
-import ReportGenerator from "@components/ReportGenerator"
-import Authentication from "@components/Authentication"
-import Account from "@components/Account"
-import ChatBot from "@components/ChatBot"
+import Dashboard from "../components/Dashboard"
+import CodeAnalysis from "../components/CodeAnalysis"
+import DocumentSummarizer from "../components/DocumentSummarizer"
+import PolicyQA from "../components/PolicyQA"
+import ReportGenerator from "../components/ReportGenerator"
+import Authentication from "../components/Authentication"
+import Account from "../components/Account"
+import ChatBot from "../components/ChatBot"
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)

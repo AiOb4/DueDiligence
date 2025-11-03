@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
 import { app } from "./firebaseConfig";

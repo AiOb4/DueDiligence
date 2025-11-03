@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import '../indexOld.css';
 import Table from '../components/SccTable.jsx'
 
 export default function CodeCounter() {
