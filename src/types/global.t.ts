@@ -11,5 +11,9 @@ declare global {
       FIREBASE_APP_ID: string;
       FIREBASE_MEASUREMENT_ID: string;
     };
+    api: {
+      selectDirectory: () => Promise<string | null>;
+      runCodeCounter: (dir: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+    };
   }
 }
