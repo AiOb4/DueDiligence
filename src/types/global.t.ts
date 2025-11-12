@@ -11,8 +11,6 @@ declare global {
       FIREBASE_APP_ID: string;
       FIREBASE_MEASUREMENT_ID: string;
     };
-<<<<<<< HEAD
-=======
     api: {
       selectDirectory: () => Promise<string | null>;
       runCodeCounter: (dir: string) => Promise<{ success: boolean; data?: any; error?: string }>;
@@ -38,6 +36,5 @@ declare global {
        */
       onDone: (callback: (data: {id: number}) => void) => () => void;
     };
->>>>>>> UINowsin3Merged
   }
 }
