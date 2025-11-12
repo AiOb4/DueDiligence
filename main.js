@@ -56,7 +56,7 @@ ipcMain.handle('runCodeCounter', async (event , {dir}) => {
   
   try {
     // Run SCC command
-    const { stdout } = await execPromise(`"${sccPath}" --format json "${dir}"`);
+    const { stdout } = await execPromise(`"${sccPath}" --format json --by-file "${dir}"`);
 
     // Parse JSON
     const data = JSON.parse(stdout);
