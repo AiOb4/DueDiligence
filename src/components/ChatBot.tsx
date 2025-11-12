@@ -9,17 +9,20 @@ interface Message {
   text: string
   sender: "user" | "agent"
   timestamp: Date
+  isThinking?: boolean;
 }
 
 interface ChatBotProps {
   isOpen: boolean
   onClose: () => void
 }
+type ChunkEvent = { id: number; chunk: string };
+type DoneEvent = { id: number };
 
 export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: 1,
+      id: 0,
       text: "Hello! I'm your Due Diligence AI Assistant. How can I help you today?",
       sender: "agent",
       timestamp: new Date(),
@@ -27,60 +30,91 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
   ])
   const [inputValue, setInputValue] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const streamingRef = useRef<Set<number>>(new Set()); // track stream ids
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  const scrollToBottom = () => {messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })};
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+
+    if (isOpen) {
+      // Wait until next tick to ensure textarea is in the DOM
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    }
+
+    // Handle stream chunks
+    const handleChunk = ({ id, chunk } : ChunkEvent) => {
+      if (!streamingRef.current.has(id)) return;
+
+      setMessages(prev =>
+        prev.map(r => r.id === id ? { ...r, 
+          text: r.isThinking ? chunk : r.text + chunk,
+          isThinking: false,
+        } : r)
+      );
+
+      scrollToBottom();
+    };
+
+    // Handle stream completion
+    const handleDone = ({ id } : DoneEvent) => {
+      streamingRef.current.delete(id);
+    };
+
+    // declare stream listeners --> returns remover functions for unmount
+    const removeChunk = window.api.onChunk(({id, chunk}) => {
+      if (chunk) handleChunk({ id: Number(id), chunk });
+    });
+
+    const removeDone = window.api.onDone(({id}) => {
+      if (id) handleDone({ id: Number(id) });
+    });
+
+    inputRef.current?.focus();
+
+    // Cleanup
+    return () => {
+      streamingRef.current.clear();
+      removeChunk();
+      removeDone();
+    };
+  }, [isOpen]);
+  // Do NOT make messages as a depdnancy, 
+  // this causes the AI chunk stream to not update.
+  // onChunk will only run when messages changes, 
+  // but messages only changes from onChunk
+
 
   const handleSend = () => {
     if (inputValue.trim() === "") return
 
     const userMessage: Message = {
-      id: messages.length + 1,
+      id: messages.length,
       text: inputValue,
       sender: "user",
       timestamp: new Date(),
     }
 
+    // show user message
     setMessages([...messages, userMessage])
     setInputValue("")
 
-    // Simulate agent response
-    setTimeout(() => {
-      const agentMessage: Message = {
-        id: messages.length + 2,
-        text: getAgentResponse(inputValue),
-        sender: "agent",
+    // listen for stream id
+    streamingRef.current.add(userMessage.id + 1);
+
+    // set empty response
+    setMessages(prev => [...prev, 
+      { id: userMessage.id + 1,
+        text: "Thinking...",
+        sender: "agent" as const, 
         timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, agentMessage])
-    }, 1000)
-  }
+        isThinking: true
+      } as Message]);
 
-  const getAgentResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
-
-    if (input.includes("code") || input.includes("analysis")) {
-      return "I can help you analyze code repositories. Would you like to start a code analysis? Just provide the repository URL and I'll analyze the codebase for you."
-    } else if (input.includes("document") || input.includes("summarize")) {
-      return "I can summarize documents for you. Upload a document and I'll provide a comprehensive summary with key insights."
-    } else if (input.includes("policy") || input.includes("question")) {
-      return "I can answer questions about your policies and documentation. What would you like to know?"
-    } else if (input.includes("report")) {
-      return "I can generate detailed due diligence reports. What type of report would you like to create?"
-    } else if (input.includes("help")) {
-      return "I can assist you with: Code Analysis, Document Summarization, Policy Q&A, and Report Generation. What would you like to do?"
-    } else {
-      return (
-        "I understand you're asking about: '" +
-        userInput +
-        "'. Could you provide more details so I can assist you better?"
-      )
-    }
+    // send chat, sends back chunks with given id + 1 (the new responseId)
+    window.api.sendChat(userMessage.id, userMessage.text);
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -121,6 +155,8 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
 
       <div className="chatbot-input-container">
         <textarea
+          ref = {inputRef}
+          autoFocus
           className="chatbot-input"
           placeholder="Ask me anything..."
           value={inputValue}

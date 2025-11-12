@@ -96,6 +96,8 @@ let chatHistory = [];
 
 ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
 
+  const responseId = id + 1;
+
   try {
     const stream = await ollama.chat({
       model: "gemma3:4b",
@@ -103,13 +105,14 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
                   ...chatHistory,
                   { role: "user", content: promptText }],
       stream: true,
+      keep_alive: 300
     });
 
     let fullResponse = "";
     for await (const part of stream) {
       const chunk = part?.message?.content ?? "";
       fullResponse += chunk;
-      event.sender.send('ollamaChatChunk', { id, chunk }); // send token-by-token
+      event.sender.send('ollamaChatChunk', { id: responseId, chunk: chunk }); // send token-by-token
     }
 
     // light weight context window
@@ -120,11 +123,11 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
     chatHistory.push({ role: "assistant", content: fullResponse });
 
     // end stream
-    event.sender.send("ollamaChatDone", { id }); 
+    event.sender.send("ollamaChatDone", { id: responseId }); 
 
   } catch (err) {
     console.error("Streaming error:", err);
-    event.sender.send("ollamaChatChunk", { id, chunk: `\n\n[Error: ${err.message}]` });
-    event.sender.send("ollamaChatDone", { id });
+    event.sender.send("ollamaChatChunk", { id: responseId, chunk: `\n\n[Error: ${err.message}]` });
+    event.sender.send("ollamaChatDone", { id: responseId });
   }
 });
