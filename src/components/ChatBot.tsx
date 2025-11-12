@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import ReactMarkdown from "react-markdown";
 
 import { useState, useRef, useEffect } from "react"
 
@@ -143,7 +144,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
             <div className="message-content">
-              <div className="message-text">{message.text}</div>
+              <div className="message-text"><ReactMarkdown>{message.text}</ReactMarkdown></div>
               <div className="message-time">
                 {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
