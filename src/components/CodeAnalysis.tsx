@@ -1,219 +1,199 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useState } from "react"
+
+const mockProjects = [
+  {
+    id: 1,
+    name: "E-commerce Platform",
+    url: "https://github.com/company/ecommerce",
+    analyzedDate: "2024-01-15",
+    totalLines: 15420,
+    totalFiles: 87,
+    complexity: "Medium",
+    maintainability: "Good",
+  },
+  {
+    id: 2,
+    name: "Mobile Banking App",
+    url: "https://github.com/company/banking-app",
+    analyzedDate: "2024-01-10",
+    totalLines: 28500,
+    totalFiles: 142,
+    complexity: "High",
+    maintainability: "Fair",
+  },
+  {
+    id: 3,
+    name: "CRM System",
+    url: "https://github.com/company/crm",
+    analyzedDate: "2024-01-05",
+    totalLines: 9800,
+    totalFiles: 56,
+    complexity: "Low",
+    maintainability: "Excellent",
+  },
+]
 
 export default function CodeAnalysis() {
-  const [dir, setDir] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [repoUrl, setRepoUrl] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [projects, setProjects] = useState(mockProjects)
+  const [selectedProject, setSelectedProject] = useState<any>(null)
+  const [showNewProject, setShowNewProject] = useState(false)
 
-  const chooseFolder = async () => {
-    const selectedDir = await window.api.selectDirectory();
-    if (selectedDir) {
-      setDir(selectedDir);
-      setError("");
+  const handleAnalyze = async () => {
+    if (!repoUrl) {
+      setError("Please enter a repository URL")
+      return
     }
-  };
 
-  const runAnalysis = async () => {
-    if (!dir) {
-      setError("Please select a folder first.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setSelectedProject(null);
+    setLoading(true)
+    setError("")
 
-    try {
-      const res = await window.api.runCodeCounter(dir);
-      if (res.success) {
-        const data = res.data;
-
-        // Calculate totals
-        const totalFiles = data.reduce((acc: number, lang: any) => acc + lang.Count, 0);
-        const totalCode = data.reduce((acc: number, lang: any) => acc + lang.Code, 0);
-        const totalComments = data.reduce((acc: number, lang: any) => acc + lang.Comment, 0);
-        const totalBlanks = data.reduce((acc: number, lang: any) => acc + lang.Blank, 0);
-        const totalLines = totalCode + totalComments + totalBlanks;
-
-        const files = data.flatMap((lang: any) => lang.Files || []);
-
-        const analyzedDate = new Date().toISOString().replace("T", " ").split(".")[0];
-
-        const projectName = dir.split(/[\\/]/).pop() || "Scanned Project";
-
-        const newProject = {
-          id: projects.length + 1,
-          name: projectName,
-          url: dir,
-          analyzedDate,
-          totalFiles,
-          totalCode,
-          totalComments,
-          totalBlanks,
-          totalLines,
-          languageBreakdown: data,
-          fileBreakdown: files,
-        };
-
-        setProjects([newProject, ...projects]);
-        setSelectedProject(newProject);
-        setLoading(false);
-      } else {
-        setError(res.error || "Failed to analyze the code.");
-        setLoading(false);
+    setTimeout(() => {
+      const newProject = {
+        id: projects.length + 1,
+        name: repoUrl.split("/").pop() || "New Project",
+        url: repoUrl,
+        analyzedDate: new Date().toISOString().split("T")[0],
+        totalLines: Math.floor(Math.random() * 30000) + 5000,
+        totalFiles: Math.floor(Math.random() * 150) + 30,
+        complexity: ["Low", "Medium", "High"][Math.floor(Math.random() * 3)],
+        maintainability: ["Excellent", "Good", "Fair"][Math.floor(Math.random() * 3)],
       }
-    } catch (err: any) {
-      setError(err.message || "Error running code analysis.");
-      setLoading(false);
-    }
-  };
 
-  // Padding helper for ASCII report tables
-  function pad(str: string | number, length: number, alignLeft = false): string {
-    const s = str.toString();
-    if (s.length >= length) return s;
-    const padding = " ".repeat(length - s.length);
-    return alignLeft ? s + padding : padding + s;
+      setProjects([newProject, ...projects])
+      setSelectedProject(newProject)
+      setShowNewProject(false)
+      setRepoUrl("")
+      setLoading(false)
+    }, 2000)
   }
 
-  function generateLanguagesTable(data: any[]) {
-    const headers = ["language", "files", "code", "comment", "blank", "total"];
-    const colWidths = [12, 12, 12, 12, 12, 12];
-    const sep = "+" + colWidths.map((w) => "-".repeat(w)).join("+") + "+";
-    const headerLine =
-      "|" + headers.map((h, i) => pad(h, colWidths[i], true)).join("|") + "|";
-    const rows = data.map((lang) => {
-      const total = lang.Code + lang.Comment + lang.Blank;
-      return (
-        "|" +
-        pad(lang.Name, colWidths[0], true) +
-        "|" +
-        pad(lang.Count, colWidths[1]) +
-        "|" +
-        pad(lang.Code.toLocaleString(), colWidths[2]) +
-        "|" +
-        pad(lang.Comment, colWidths[3]) +
-        "|" +
-        pad(lang.Blank, colWidths[4]) +
-        "|" +
-        pad(total.toLocaleString(), colWidths[5]) +
-        "|"
-      );
-    });
-    return [sep, headerLine, sep, ...rows, sep].join("\n");
+  const handleProjectClick = (project: any) => {
+    setSelectedProject(project)
+    setShowNewProject(false)
   }
-
-  function generateFilesTable(files: any[]) {
-    const headers = ["filename", "language", "code", "comment", "blank", "total"];
-    const colWidths = [80, 12, 12, 12, 12, 12];
-    const sep = "+" + colWidths.map((w) => "-".repeat(w)).join("+") + "+";
-    const headerLine =
-      "|" + headers.map((h, i) => pad(h, colWidths[i], i === 0)).join("|") + "|";
-    const rows = files.map((file) => {
-      const total = file.Code + file.Comment + file.Blank;
-      return (
-        "|" +
-        pad(file.Location || file.Filename, colWidths[0], true) +
-        "|" +
-        pad(file.Language, colWidths[1], true) +
-        "|" +
-        pad(file.Code.toLocaleString(), colWidths[2]) +
-        "|" +
-        pad(file.Comment, colWidths[3]) +
-        "|" +
-        pad(file.Blank, colWidths[4]) +
-        "|" +
-        pad(total.toLocaleString(), colWidths[5]) +
-        "|"
-      );
-    });
-    return [sep, headerLine, sep, ...rows, sep].join("\n");
-  }
-
-  // Generate the full downloadable text report
-  function generateReportText(project: any) {
-    const header = `Date : ${project.analyzedDate}\nDirectory : ${project.url}\nTotal : ${project.totalFiles} files,  ${project.totalCode} codes, ${project.totalComments} comments, ${project.totalBlanks} blanks, all ${project.totalLines} lines\n`;
-    const languageSectionTitle = "\nLanguages\n";
-    const languagesTable = generateLanguagesTable(project.languageBreakdown);
-    const filesSectionTitle = "\nFiles\n";
-    const filesTable = generateFilesTable(project.fileBreakdown || []);
-    return header + languageSectionTitle + languagesTable + filesSectionTitle + filesTable + "\n";
-  }
-
-  const downloadReport = () => {
-    if (!selectedProject) return;
-    const reportText = generateReportText(selectedProject);
-    const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${selectedProject.name.replace(/\s+/g, "_")}_report.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
-    <div className="card" style={{ maxWidth: "900px", margin: "auto", color: "#333" }}>
+    <div className="card">
       <h2>Code Analysis</h2>
-      <p style={{ marginBottom: "20px", color: "#555" }}>
-        Select a folder and run code analysis using the SCC tool.
-      </p>
+      <p style={{ marginBottom: "20px", color: "#555" }}>Manage and analyze your code repositories.</p>
 
-      <button className="button" onClick={chooseFolder} style={{ marginBottom: "10px" }}>
-        Choose Folder
+      <button
+        className="button"
+        onClick={() => {
+          setShowNewProject(true)
+          setSelectedProject(null)
+        }}
+        style={{ marginBottom: "20px" }}
+      >
+        + Add New Project
       </button>
-      {dir && (
-        <p style={{ marginBottom: "10px", fontFamily: "monospace" }}>
-          <b>Selected:</b> {dir}
-        </p>
+
+      {showNewProject && (
+        <div className="new-project-form">
+          <h3>Add New Project</h3>
+          <div className="form-group">
+            <label htmlFor="repoUrl">Repository URL or Path</label>
+            <input
+              id="repoUrl"
+              type="text"
+              placeholder="https://github.com/username/repository"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button className="button" onClick={handleAnalyze} disabled={loading}>
+              {loading ? "Analyzing..." : "Run Analysis"}
+            </button>
+            <button
+              className="button-secondary"
+              onClick={() => {
+                setShowNewProject(false)
+                setRepoUrl("")
+                setError("")
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          {error && <div className="error">{error}</div>}
+          {loading && <div className="loading">Analyzing code repository...</div>}
+        </div>
       )}
 
-      <button className="button" onClick={runAnalysis} disabled={loading || !dir}>
-        {loading ? "Analyzing..." : "Run Analysis"}
-      </button>
-
-      {error && <div className="error" style={{ marginTop: "10px" }}>{error}</div>}
-
-      <div style={{ marginTop: "30px" }}>
-        <h3>Your Projects ({projects.length})</h3>
-        {projects.length === 0 && <p>No projects analyzed yet.</p>}
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className={`project-item ${selectedProject?.id === project.id ? "active" : ""}`}
-            onClick={() => setSelectedProject(project)}
-            style={{
-              cursor: "pointer",
-              padding: "10px",
-              backgroundColor: selectedProject?.id === project.id ? "#f0f0f0" : "#fff",
-              marginBottom: "8px",
-              borderRadius: "5px",
-              fontFamily: "monospace",
-              whiteSpace: "pre-wrap",
-              color: "#333",
-            }}
-          >
-            {project.name}
-            {"\n"}
-            {project.analyzedDate}
-            {"\n"}
-            {project.url}
-            {"\n"}
-            {project.totalFiles} files {project.totalCode.toLocaleString()} codes {project.totalComments} comments {project.totalBlanks} blanks all {project.totalLines.toLocaleString()} lines
+      {!showNewProject && (
+        <div className="projects-section">
+          <h3 style={{ marginBottom: "15px" }}>Your Projects ({projects.length})</h3>
+          <div className="projects-list">
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                className={`project-item ${selectedProject?.id === project.id ? "active" : ""}`}
+                onClick={() => handleProjectClick(project)}
+              >
+                <div className="project-header">
+                  <h4>{project.name}</h4>
+                  <span className="project-date">{project.analyzedDate}</span>
+                </div>
+                <div className="project-url">{project.url}</div>
+                <div className="project-stats">
+                  <span>{project.totalLines.toLocaleString()} lines</span>
+                  <span>{project.totalFiles} files</span>
+                  <span className={`complexity-badge ${project.complexity.toLowerCase()}`}>{project.complexity}</span>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {selectedProject && (
+      {selectedProject && !showNewProject && (
         <div className="result-box" style={{ marginTop: "20px" }}>
-          <button onClick={downloadReport} className="button" style={{ marginTop: "15px" }}>
-            Download Full Report
-          </button>
+          <h3>Analysis Results: {selectedProject.name}</h3>
+
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <h4>Total Lines</h4>
+              <p>{selectedProject.totalLines.toLocaleString()}</p>
+            </div>
+            <div className="metric-card">
+              <h4>Total Files</h4>
+              <p>{selectedProject.totalFiles}</p>
+            </div>
+            <div className="metric-card">
+              <h4>Complexity</h4>
+              <p>{selectedProject.complexity}</p>
+            </div>
+            <div className="metric-card">
+              <h4>Maintainability</h4>
+              <p>{selectedProject.maintainability}</p>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "20px" }}>
+            <h4 style={{ marginBottom: "10px" }}>Language Breakdown</h4>
+            <div style={{ marginBottom: "8px" }}>
+              <strong>JavaScript:</strong> 8,500 lines
+            </div>
+            <div style={{ marginBottom: "8px" }}>
+              <strong>Python:</strong> 4,200 lines
+            </div>
+            <div style={{ marginBottom: "8px" }}>
+              <strong>CSS:</strong> 1,800 lines
+            </div>
+            <div style={{ marginBottom: "8px" }}>
+              <strong>HTML:</strong> 920 lines
+            </div>
+          </div>
         </div>
       )}
     </div>
-  );
+  )
 }
