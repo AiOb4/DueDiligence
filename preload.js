@@ -5,9 +5,12 @@ contextBridge.exposeInMainWorld('api', {
   selectDirectory: () => ipcRenderer.invoke('selectDirectory'),
   runCodeCounter: (dir) => ipcRenderer.invoke('runCodeCounter', {dir}),
 
+  indexDir: (dir) => ipcRenderer.invoke('indexDir', (dir)),
+  ollamaEmbed: (promptText) => ipcRenderer.invoke('ollamaEmbed', {promptText}),
+
   sendChat: (id, promptText) => ipcRenderer.send('ollamaChatStream', { id, promptText }),
 
-  // subscribe to chunk events
+  // subscribe to chunk events, unmount when called again
   onChunk: (callback) => {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('ollamaChatChunk', handler);

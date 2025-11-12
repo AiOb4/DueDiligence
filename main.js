@@ -1,10 +1,17 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import path from "path";
+import { exec } from "child_process";
+import util from "util";
 const execPromise = util.promisify(exec);
-require('dotenv').config();
-const ollama = require('ollama').default;
+import dotenv from "dotenv";
+import ollama from "ollama";
+import { parseDir } from "./ipcModules/semanticSearch.js";
+
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config();
 
 const isDev = !app.isPackaged;
 
@@ -57,6 +64,19 @@ ipcMain.handle('runCodeCounter', async (event , {dir}) => {
   } catch (error) {
     console.error('SCC error:', error);
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('indexDirectory', async (event , {dir}) => {
+  
+  try {
+    // trying parser
+    parseDir(dir);
+    return true;
+
+  } catch (error) {
+    console.error('Index error:', error);
+    return false;
   }
 });
 
@@ -126,5 +146,20 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
     console.error("Streaming error:", err);
     event.sender.send("ollamaChatChunk", { id, chunk: `\n\n[Error: ${err.message}]` });
     event.sender.send("ollamaChatDone", { id });
+  }
+});
+
+ipcMain.on('ollamaEmbed', async (event, {promptText}) => {
+
+  try {
+    const data = await ollama.embeddings({ 
+      model: 'nomic-embed-text', 
+      prompt: promptText 
+    })
+    return { success: true, data };
+
+  } catch (err) {
+    console.error("Embedding error:", err);
+    return { success: false, err };
   }
 });

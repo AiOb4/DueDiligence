@@ -2,6 +2,7 @@
   "name": "duediligence",
   "version": "1.0.0",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -101,6 +102,8 @@
     "react-router-dom": "^7.9.1",
     "simple-git": "^3.30.0",
     "tmp-promise": "^3.0.3"
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0"
   },
   "build": {
     "appId": "com.myapp.duediligence",
