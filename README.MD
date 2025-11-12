@@ -11,8 +11,9 @@ Before running the app, make sure you have the following installed:
 1. **Node.js & npm** – [Download here](https://nodejs.org/)  
 2. **Ollama** – Install from the [Ollama website](https://ollama.com/)  
 3. **Gemma3:4b model** – Download via Ollama
+4. **Nomic-Embed-Text** - Download via Ollama
 
-Ollama will be bundled or put in the cloud somewhere in production
+Ollama and a script to download models on first launch will be bundled in production
 
 ---
 
@@ -26,4 +27,5 @@ Ollama will be bundled or put in the cloud somewhere in production
 
     npm run dev
 
-This should open an electron application with a chat window to talk with ollama, and a page to run the scc (code counter)
+An application will open to an Authentication page, which will lead to a dashboard for the features.
+Depreciated pages are also present for testing and will be removed in the future.
