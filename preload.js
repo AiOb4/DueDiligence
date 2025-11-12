@@ -12,14 +12,14 @@ contextBridge.exposeInMainWorld('api', {
 
   // subscribe to chunk events, unmount when called again
   onChunk: (callback) => {
-    const handler = (event, data) => callback(data);
+    const handler = (event, { id, chunk }) => callback({ id, chunk });
     ipcRenderer.on('ollamaChatChunk', handler);
     return () => ipcRenderer.removeListener('ollamaChatChunk', handler);
   },
 
   // subscribe to done events, and unmount when called again
   onDone: (callback) => {
-    const handler = (event, data) => callback(data);
+    const handler = (event, { id }) => callback({ id });
     ipcRenderer.on('ollamaChatDone', handler);
     return () => ipcRenderer.removeListener('ollamaChatDone', handler);
   }
