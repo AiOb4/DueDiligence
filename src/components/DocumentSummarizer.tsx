@@ -3,6 +3,9 @@
 import type React from "react"
 
 import { useState } from "react"
+import { updateUsage } from "../firebase/dbUsage"; 
+import { auth } from "../firebase/firebaseConfig";
+
 
 export default function DocumentSummarizer() {
   const [file, setFile] = useState<File | null>(null)
@@ -18,6 +21,20 @@ export default function DocumentSummarizer() {
   }
 
   const handleSummarize = async () => {
+
+    const user = auth.currentUser; 
+  
+    if (user) {
+      try {
+        console.log("Updating usage for user:", user.uid);
+        await updateUsage("documentSummarizer");
+      } catch (e) {
+        console.error("Failed to update usage:", e);
+      }
+    } else {
+      console.warn("User not logged in, skipping usage update");
+    }
+
     if (!file) {
       setError("Please select a file to summarize")
       return
@@ -26,7 +43,6 @@ export default function DocumentSummarizer() {
     setLoading(true)
     setError("")
 
-    // Simulate API call
     setTimeout(() => {
       setSummary(
         `Summary of ${file.name}:\n\nThis document outlines the key findings from the due diligence process. The main points include:\n\n1. Financial Performance: The company has shown consistent growth over the past 3 years with revenue increasing by 25% annually.\n\n2. Risk Assessment: Several moderate risks were identified in the supply chain management area, particularly regarding vendor dependencies.\n\n3. Compliance: All regulatory requirements are being met, with proper documentation maintained.\n\n4. Recommendations: Consider diversifying supplier base and implementing additional quality control measures.`,

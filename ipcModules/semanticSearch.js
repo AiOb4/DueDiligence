@@ -3,6 +3,31 @@ import JavaScript from "tree-sitter-javascript";
 import path from "path";
 import fs from "fs";
 import ollama from "ollama";
+import dotenv from 'dotenv';
+import { initializeApp } from "firebase/app";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query,
+  limit
+} from "firebase/firestore";
+
+dotenv.config();
+
+const firebaseConfig = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const parser = new Parser();
 parser.setLanguage(JavaScript);
@@ -16,16 +41,28 @@ Separate summaries with a new line.
 `;
 
 export const parseDir = async (folderPath) => {
+    try {
+        const files = fs.readdirSync(folderPath, {recursive : true});
 
-    const files = fs.readdirSync(folderPath, {recursive : true});
-
-    for (const file of files) {
-        const fullPath = path.join(folderPath, file);
-        parseFile(fullPath);
+        for (const file of files) {
+            const fullPath = path.join(folderPath, file);
+            await parseFile(fullPath);
+        }
+        return true;
+    } catch (e) {
+        console.error("Directory parse error:", e);
+        return false;
     }
 }
 
 export const parseFile = async (filePath) => {
+
+    if (filePath.includes('node_modules') || filePath.includes('.git')) return;
+    try {
+        if (fs.statSync(filePath).isDirectory()) return;
+    } catch (e) {
+        return; 
+    }
 
     let root;
     const snippets = [];
@@ -37,39 +74,27 @@ export const parseFile = async (filePath) => {
     }
     catch (error) {
         console.log("Parse error");
+        return;
     }
 
     async function visit(node, depth) {
-
-        // ignore the root node (its the entire file) and ignore deep nests
         if (depth < 1 || 8 < depth) return;
 
-        // if a function, process
         if (node.nodeType === "expression_statement") {
-
-            //const name = node.nodeType;
             snippets.push(node.nodeText);
         }
     }
 
     function walkTree(cursor) {
-        // recursive function
         function traverse(c, depth) {
-
-            // Run the callback for the current node
             visit(c, depth);
-
-            // If this node has children, descend into them
             if (c.gotoFirstChild()) {
                 do {
                     traverse(c, depth + 1);
                 } while (c.gotoNextSibling());
-
-                // Return to parent when done exploring children
                 c.gotoParent();
             }
         }
-
         traverse(cursor, 0);
     }
 
@@ -79,11 +104,12 @@ export const parseFile = async (filePath) => {
     catch (error) {
         console.log("Walk error");
         console.error(error);
+        return;
     }
 
-    try {
-        // summarize snippets
+    if (snippets.length === 0) return;
 
+    try {
         const joinedSnippets = snippets.map((s, i) => `(${i + 1}) ${s}`).join("\n\n");
 
         const summaryResponse = await ollama.chat({
@@ -96,9 +122,8 @@ export const parseFile = async (filePath) => {
         const summary = summaryResponse.message?.content || summaryResponse.output || "";
         const summaries = summary.split(/\n+/).map(line => line.replace(/^\(\d+\)\s*/, "").trim());
 
-        console.log("Summaries:", summaries);
+        console.log(`[RAG] Summarized ${summaries.length} snippets from ${path.basename(filePath)}`);
 
-        // embed snippet
         const embeddingResponse = await ollama.embed({
             model: 'nomic-embed-text', 
             input: summaries,
@@ -113,9 +138,21 @@ export const parseFile = async (filePath) => {
             embedding: embeddings[i]
         }));
 
+        const chunksCollection = collection(db, "code_chunks");
+
         for (const result of results) {
+            if (!result.embedding) continue;
             console.log("\n" + result.snippet + "\n" + result.summary + "\n");
+
+            await addDoc(chunksCollection, {
+                filePath: filePath,
+                content: result.snippet,
+                summary: result.summary,
+                embedding: result.embedding,
+                createdAt: new Date()
+            });
         }
+        console.log(`[RAG] Indexed ${results.length} chunks from ${path.basename(filePath)}`);
     }
     catch (error) {
         console.error(error);
@@ -123,3 +160,32 @@ export const parseFile = async (filePath) => {
     }
 };
 
+export async function searchCodebase(userQuery) {
+  console.log(`[RAG] Searching for: ${userQuery}`);
+
+  try {
+    const embeddingResponse = await ollama.embeddings({
+      model: 'nomic-embed-text',
+      prompt: userQuery,
+    });
+    
+    const chunksCollection = collection(db, "code_chunks");
+    const q = query(chunksCollection, limit(10));
+
+    const snapshot = await getDocs(q);
+    
+    const results = snapshot.docs.map(doc => ({
+      content: doc.data().content,
+      summary: doc.data().summary,
+      filePath: doc.data().filePath,
+      score: 0 
+    }));
+
+    console.log(`[RAG] Found ${results.length} relevant chunks.`);
+    return results;
+
+  } catch (error) {
+    console.error("[RAG] Search error:", error);
+    return [];
+  }
+}

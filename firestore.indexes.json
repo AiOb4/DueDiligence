@@ -1,0 +1,13 @@
+{
+  "indexes": [],
+  "fieldOverrides": [],
+  "vectorIndexes": [
+    {
+      "collectionGroup": "code_chunks",
+      "queryScope": "COLLECTION",
+      "fieldPath": "embedding",
+      "dimension": 768,
+      "distanceMeasure": "COSINE"
+    }
+  ]
+}

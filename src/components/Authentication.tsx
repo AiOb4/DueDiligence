@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { signUp, signIn, signInWithGoogle } from "./firebaseAuth";
+import { signUp, signIn, signInWithGoogle } from "../firebase/firebaseAuth";
 
 interface AuthenticationProps {
   onAuthSuccess: () => void;
