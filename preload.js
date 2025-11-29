@@ -22,7 +22,31 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (event, { id }) => callback({ id });
     ipcRenderer.on('ollamaChatDone', handler);
     return () => ipcRenderer.removeListener('ollamaChatDone', handler);
-  }
+  },
+
+  // Policy Q&A APIs 
+  selectPolicyFiles: () => ipcRenderer.invoke("policySelectFiles"),
+
+  policyIndexPolicies: (filePaths) =>
+    ipcRenderer.invoke("policyIndexPolicies", { filePaths }),
+
+  policyAskQuestion: (question) =>
+    ipcRenderer.invoke("policyAskQuestion", { question }),
+
+  selectPolicyFiles: () => ipcRenderer.invoke("policySelectFiles"),
+
+  policyIndexPolicies: (filePaths) =>
+    ipcRenderer.invoke("policyIndexPolicies", { filePaths }),
+
+  policyAskQuestion: (question) =>
+    ipcRenderer.invoke("policyAskQuestion", { question }),
+
+  policyClearIndex: () => ipcRenderer.invoke("policyClearIndex"),
+
+  policyListPolicies: () => ipcRenderer.invoke("policyListPolicies"),
+
+  policyRemovePolicy: (docName) =>
+    ipcRenderer.invoke("policyRemovePolicy", { docName }),
 });
 
 // other 'api' calls exist in firebaseAuth and firebaseConfig files
@@ -35,4 +59,5 @@ contextBridge.exposeInMainWorld('env', {
   FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
   FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID
+
 });

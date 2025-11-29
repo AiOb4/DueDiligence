@@ -6,8 +6,9 @@ const execPromise = util.promisify(exec);
 import dotenv from "dotenv";
 import ollama from "ollama";
 import { parseDir, searchCodebase } from "./ipcModules/semanticSearch.js";
-
+import { indexPolicies, askPolicyQuestion,loadPolicyIndexFromDisk,clearPolicyIndex,listPolicyDocs,removePolicyByDocName,} from "./ipcModules/policyQA.js";
 import { fileURLToPath } from "url";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -38,6 +39,13 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
+  try {
+    const reloadResult = loadPolicyIndexFromDisk();
+    console.log("Policy index reload on startup:", reloadResult);
+  } catch (err) {
+    console.error("Error reloading saved policy index:", err);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -94,6 +102,82 @@ ipcMain.handle('selectDirectory', async () => {
     return result.filePaths[0];
   } else {
     return null;
+  }
+});
+
+// Let the user choose policy files to upload (from the Policy Q&A page)
+ipcMain.handle("policySelectFiles", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      {
+        name: "Policy files",
+        extensions: ["txt", "md", "docx"],
+      },
+    ],
+  });
+
+  if (result.canceled || !result.filePaths.length) {
+    return { success: false, filePaths: [] };
+  }
+  return { success: true, filePaths: result.filePaths };
+});
+
+// Build / refresh the policy embedding index from selected files
+ipcMain.handle("policyIndexPolicies", async (event, { filePaths }) => {
+  try {
+    const summary = await indexPolicies(filePaths);
+    return { success: true, ...summary };
+  } catch (err) {
+    console.error("policyIndexPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Answer a policy question using the indexed policies
+ipcMain.handle("policyAskQuestion", async (event, { question }) => {
+  try {
+    const result = await askPolicyQuestion(question);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyAskQuestion error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Returns a list of all currently indexed policy documents
+ipcMain.handle("policyListPolicies", async () => {
+  try {
+    const result = listPolicyDocs();
+    return result;
+  } catch (err) {
+    console.error("policyListPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Removes all chunks belonging to a specific policy document
+ipcMain.handle("policyRemovePolicy", async (event, { docName }) => {
+  try {
+    if (!docName) {
+      return { success: false, error: "docName is required" };
+    }
+    const result = removePolicyByDocName(docName);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyRemovePolicy error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Clears the entire policy index
+ipcMain.handle("policyClearIndex", async () => {
+  try {
+    const result = clearPolicyIndex();
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyClearIndex error:", err);
+    return { success: false, error: err.message };
   }
 });
 
