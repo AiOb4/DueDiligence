@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { updateUsage } from "../firebase/dbUsage";
+import { onAuthStateChanged, getAuth } from "firebase/auth";
 
 export default function CodeAnalysis() {
   const [dir, setDir] = useState("");
@@ -18,6 +20,9 @@ export default function CodeAnalysis() {
   };
 
   const runAnalysis = async () => {
+
+    await updateUsage("codeAnalysis");
+
     if (!dir) {
       setError("Please select a folder first.");
       return;
@@ -31,7 +36,6 @@ export default function CodeAnalysis() {
       if (res.success) {
         const data = res.data;
 
-        // Calculate totals
         const totalFiles = data.reduce((acc: number, lang: any) => acc + lang.Count, 0);
         const totalCode = data.reduce((acc: number, lang: any) => acc + lang.Code, 0);
         const totalComments = data.reduce((acc: number, lang: any) => acc + lang.Comment, 0);
@@ -71,7 +75,6 @@ export default function CodeAnalysis() {
     }
   };
 
-  // Padding helper for ASCII report tables
   function pad(str: string | number, length: number, alignLeft = false): string {
     const s = str.toString();
     if (s.length >= length) return s;
@@ -133,7 +136,6 @@ export default function CodeAnalysis() {
     return [sep, headerLine, sep, ...rows, sep].join("\n");
   }
 
-  // Generate the full downloadable text report
   function generateReportText(project: any) {
     const header = `Date : ${project.analyzedDate}\nDirectory : ${project.url}\nTotal : ${project.totalFiles} files,  ${project.totalCode} codes, ${project.totalComments} comments, ${project.totalBlanks} blanks, all ${project.totalLines} lines\n`;
     const languageSectionTitle = "\nLanguages\n";

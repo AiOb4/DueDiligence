@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
-import { app } from "./firebaseConfig";
-import { getUserProfile, updateUserProfile } from "./firebaseAuth";
+import { doc, getDoc } from "firebase/firestore";
+import { app, db } from "../firebase/firebaseConfig";
+import { getUserProfile, updateUserProfile } from "../firebase/firebaseAuth";
 
 export default function Account() {
   const [isEditing, setIsEditing] = useState(false);
+
+  const [usageStats, setUsageStats] = useState({
+    codeAnalysis: 0,
+    reportGenerator: 0,
+  });
+
   const [userData, setUserData] = useState({
     fullName: "",
     email: "",
@@ -12,7 +19,9 @@ export default function Account() {
     company: "",
     phone: "",
     location: "",
+    createdAt: null,
   });
+
   const [editData, setEditData] = useState(userData);
   const auth = getAuth(app);
 
@@ -29,6 +38,7 @@ export default function Account() {
             company: profileData.company || "",
             phone: profileData.phone || "",
             location: profileData.location || "",
+            createdAt: profileData.createdAt || user.metadata.creationTime,
           });
         } else {
           // fallback to basic info
@@ -39,11 +49,40 @@ export default function Account() {
             company: "",
             phone: "",
             location: "",
+            createdAt: user.metadata.creationTime,
           });
         }
+        setEditData((prev) => ({ ...prev, ...profileData }));
       });
+
+      const fetchStats = async () => {
+        try {
+          const statsRef = doc(db, "userStats", user.uid);
+          const statsSnap = await getDoc(statsRef);
+
+          if (statsSnap.exists()) {
+            const data = statsSnap.data();
+            setUsageStats({
+              codeAnalysis: data.codeAnalysis || 0,
+              reportGenerator: data.reportGenerator || 0,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching usage stats:", error);
+        }
+      };
+
+      fetchStats();
     }
   }, [auth.currentUser]);
+
+  const formatDate = (date: any) => {
+    if (!date) return "N/A";
+    
+    const d = date.toDate ? date.toDate() : new Date(date);
+    
+    return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -94,15 +133,15 @@ export default function Account() {
           <div className="account-stats">
             <div className="account-stat-item">
               <span className="stat-label">Member Since</span>
-              <span className="stat-value">Jan 2024</span>
+              <span className="stat-value">{formatDate(userData.createdAt)}</span>
             </div>
             <div className="account-stat-item">
               <span className="stat-label">Projects Analyzed</span>
-              <span className="stat-value">24</span>
+              <span className="stat-value">{usageStats.codeAnalysis}</span>
             </div>
             <div className="account-stat-item">
               <span className="stat-label">Reports Generated</span>
-              <span className="stat-value">18</span>
+              <span className="stat-value">{usageStats.reportGenerator}</span>
             </div>
           </div>
         </div>

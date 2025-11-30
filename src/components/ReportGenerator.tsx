@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { updateUsage } from "../firebase/dbUsage"; 
+import { getAuth } from "firebase/auth";
 
 export default function ReportGenerator() {
   const [reportType, setReportType] = useState("full")
@@ -10,6 +12,10 @@ export default function ReportGenerator() {
   const [error, setError] = useState("")
 
   const handleGenerate = async () => {
+
+    // Hosung - Record feature usage in Firestore
+    await updateUsage("reportGenerator");
+
     if (!projectName.trim()) {
       setError("Please enter a project name")
       return

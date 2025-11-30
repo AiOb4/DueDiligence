@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { updateUsage } from "../firebase/dbUsage"; 
+import { getAuth } from "firebase/auth";
 
 export default function PolicyQA() {
   const [question, setQuestion] = useState("")
@@ -9,6 +11,10 @@ export default function PolicyQA() {
   const [error, setError] = useState("")
 
   const handleAsk = async () => {
+
+    // Hosung - Record feature usage in Firestore
+    await updateUsage("policyQA");
+
     if (!question.trim()) {
       setError("Please enter a question")
       return

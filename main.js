@@ -5,7 +5,7 @@ import util from "util";
 const execPromise = util.promisify(exec);
 import dotenv from "dotenv";
 import ollama from "ollama";
-import { parseDir } from "./ipcModules/semanticSearch.js";
+import { parseDir, searchCodebase } from "./ipcModules/semanticSearch.js";
 
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -71,13 +71,18 @@ ipcMain.handle('indexDirectory', async (event , {dir}) => {
   
   try {
     // trying parser
-    parseDir(dir);
+    await parseDir(dir);
     return true;
 
   } catch (error) {
     console.error('Index error:', error);
     return false;
   }
+});
+
+ipcMain.handle('searchVector', async (event, { query }) => {
+  const results = await searchCodebase(query);
+  return results;
 });
 
 ipcMain.handle('selectDirectory', async () => {
