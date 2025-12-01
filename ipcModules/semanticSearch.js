@@ -13,6 +13,7 @@ import {
   query,
   limit
 } from "firebase/firestore";
+import { ipcMain } from "electron";
 
 dotenv.config();
 
@@ -189,3 +190,21 @@ export async function searchCodebase(userQuery) {
     return [];
   }
 }
+
+ipcMain.handle('indexDirectory', async (event , {dir}) => {
+  
+  try {
+    // trying parser
+    await parseDir(dir);
+    return true;
+
+  } catch (error) {
+    console.error('Index error:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('searchVector', async (event, { query }) => {
+  const results = await searchCodebase(query);
+  return results;
+});
