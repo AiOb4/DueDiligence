@@ -31,7 +31,7 @@ async function checkOllamaInstalled() {
 
   console.log("Downloading latest Ollama...");
 
-  const url = "https://ollama.com/download/ollama-windows-amd64.zip";
+  const url = process.platform === 'win32' ? "https://ollama.com/download/ollama-windows-amd64.zip" : "https://ollama.com/download/ollama-darwin.zip";
   const response = await fetch(url);
 
   const total = Number(response.headers.get("content-length"));
