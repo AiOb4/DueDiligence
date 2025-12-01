@@ -16,7 +16,7 @@ const INDEX_FILE = path.join(RESOURCES_DIR, "policyIndex.json");
 let policyIndex = [];
 
 
-//Chunk a big text into semi-manageable pieces.
+// Chunk a big text into semi-manageable pieces.
 function chunkText(text, maxChars = 1200) {
   const chunks = [];
   let start = 0;

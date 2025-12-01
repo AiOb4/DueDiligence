@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke("policyRemovePolicy", { docName }),
 });
 
-// other 'api' calls exist in firebaseAuth and firebaseConfig files
+// Other 'api' calls exist in firebaseAuth and firebaseConfig files
 
 contextBridge.exposeInMainWorld("env", {
   FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

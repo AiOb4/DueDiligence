@@ -105,7 +105,7 @@ ipcMain.handle('selectDirectory', async () => {
   }
 });
 
-// Let the user choose policy files to upload (from the Policy Q&A page)
+// Let the user choose policy files to upload
 ipcMain.handle("policySelectFiles", async () => {
   const result = await dialog.showOpenDialog({
     properties: ["openFile", "multiSelections"],
