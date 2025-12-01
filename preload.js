@@ -22,17 +22,42 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (event, { id }) => callback({ id });
     ipcRenderer.on('ollamaChatDone', handler);
     return () => ipcRenderer.removeListener('ollamaChatDone', handler);
-  }
+  },
+
+  // Policy Q&A APIs 
+  selectPolicyFiles: () => ipcRenderer.invoke("policySelectFiles"),
+
+  policyIndexPolicies: (filePaths) =>
+    ipcRenderer.invoke("policyIndexPolicies", { filePaths }),
+
+  policyAskQuestion: (question) =>
+    ipcRenderer.invoke("policyAskQuestion", { question }),
+
+  selectPolicyFiles: () => ipcRenderer.invoke("policySelectFiles"),
+
+  policyIndexPolicies: (filePaths) =>
+    ipcRenderer.invoke("policyIndexPolicies", { filePaths }),
+
+  policyAskQuestion: (question) =>
+    ipcRenderer.invoke("policyAskQuestion", { question }),
+
+  policyClearIndex: () => ipcRenderer.invoke("policyClearIndex"),
+
+  policyListPolicies: () => ipcRenderer.invoke("policyListPolicies"),
+
+  policyRemovePolicy: (docName) =>
+    ipcRenderer.invoke("policyRemovePolicy", { docName }),
 });
 
-// other 'api' calls exist in firebaseAuth and firebaseConfig files
+// Other 'api' calls exist in firebaseAuth and firebaseConfig files
 
-contextBridge.exposeInMainWorld('env', {
-  FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
-  FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
-  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-  FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-  FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID
+contextBridge.exposeInMainWorld("env", {
+  FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 });
