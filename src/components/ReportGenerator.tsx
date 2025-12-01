@@ -260,41 +260,23 @@ export default function ReportGenerator() {
         const text = line.replace(/^[\*\-]\s/, '')
         const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '')
 
-        // Check if this looks like a subheading (ends with : or is short and bold-like)
-        const isSubheading = cleanText.endsWith(':') || (cleanText.length < 60 && !cleanText.includes('.'))
+        // All bullet points - no subheading conversion
+        pdf.setFontSize(10)
+        pdf.setFont("helvetica", "normal")
 
-        if (isSubheading) {
-          // Render as bold subheading without bullet
-          pdf.setFontSize(11)
-          pdf.setFont("helvetica", "bold")
-          pdf.setTextColor(52, 73, 94)
+        // Add bullet point (indented more to align with text)
+        const bulletX = margin + 5
+        const textX = margin + 11
 
-          checkPageBreak(8)
-          yPosition += 3
-          const wrapped = pdf.splitTextToSize(cleanText, maxWidth)
-          wrapped.forEach((line: string) => {
-            checkPageBreak(7)
-            pdf.text(line, margin, yPosition)
-            yPosition += 6
-          })
-          pdf.setTextColor(0, 0, 0)
-          yPosition += 2
-        } else {
-          // Regular bullet point
-          pdf.setFontSize(10)
-          pdf.setFont("helvetica", "normal")
+        pdf.circle(bulletX, yPosition - 1.5, 0.8, 'F')
 
-          // Add bullet point
-          pdf.circle(margin + 2, yPosition - 1.5, 0.8, 'F')
-
-          const wrapped = pdf.splitTextToSize(cleanText, maxWidth - 8)
-          wrapped.forEach((line: string, idx: number) => {
-            checkPageBreak(6)
-            pdf.text(line, margin + 6, yPosition)
-            yPosition += 5
-          })
-          yPosition += 1
-        }
+        const wrapped = pdf.splitTextToSize(cleanText, maxWidth - 11)
+        wrapped.forEach((line: string, idx: number) => {
+          checkPageBreak(6)
+          pdf.text(line, textX, yPosition)
+          yPosition += 5
+        })
+        yPosition += 1
         continue
       }
 
