@@ -14,7 +14,48 @@ declare global {
     api: {
       selectDirectory: () => Promise<string | null>;
       runCodeCounter: (dir: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-      
+
+      /**
+       * Save code analysis results to local storage
+       * @param projectData The project analysis data to save
+       */
+      saveCodeAnalysis: (projectData: any) => Promise<{ success: boolean; fileId?: string; error?: string }>;
+
+      /**
+       * Get list of all saved projects
+       */
+      getProjectList: () => Promise<{ success: boolean; projects: any[]; error?: string }>;
+
+      /**
+       * Get full project data by name
+       * @param projectName The name of the project to retrieve
+       */
+      getProjectData: (projectName: string) => Promise<{ success: boolean; project?: any; error?: string }>;
+
+      /**
+       * Generate a due diligence report for a project
+       * @param projectName The name of the project
+       * @param reportType The type of report (full, executive, etc.)
+       */
+      generateReport: (projectName: string, reportType: string) => Promise<{
+        success: boolean;
+        reportContent?: string;
+        reportId?: string;
+        projectData?: any;
+        error?: string
+      }>;
+
+      /**
+       * Get list of recent reports
+       */
+      getRecentReports: () => Promise<{ success: boolean; reports: any[]; error?: string }>;
+
+      /**
+       * Get full report by ID
+       * @param reportId The ID of the report to retrieve
+       */
+      getReport: (reportId: string) => Promise<{ success: boolean; report?: any; error?: string }>;
+
       /**
        * Send a message to start a streamed chat with Ollama
        * @param id Unique identifier for the chat

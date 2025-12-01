@@ -7,6 +7,8 @@ import "./ipcModules/codeCounter.js";
 import "./ipcModules/ollama.js";
 import "./ipcModules/policyQA.js";
 import "./ipcModules/semanticSearch.js";
+import "./ipcModules/projectStorage.js";
+import "./ipcModules/reportGenerator.js";
 import { loadPolicyIndexFromDisk } from "./ipcModules/policyQA.js";
 import { fileURLToPath } from "url";
 import { pipeline } from 'stream/promises';
