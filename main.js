@@ -1,11 +1,13 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
+import fs from "fs";
 import { exec } from "child_process";
 import util from "util";
 const execPromise = util.promisify(exec);
 import dotenv from "dotenv";
 import ollama from "ollama";
 import { parseDir, searchCodebase } from "./ipcModules/semanticSearch.js";
+import { indexPolicies, askPolicyQuestion, loadPolicyIndexFromDisk, clearPolicyIndex, listPolicyDocs, removePolicyByDocName } from "./ipcModules/policyQA.js";
 
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -39,6 +41,14 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  // ✅ POLICY QA: Load saved policy index on startup
+  try {
+    const reloadResult = loadPolicyIndexFromDisk();
+    console.log("Policy index reload on startup:", reloadResult);
+  } catch (err) {
+    console.error("Error reloading saved policy index:", err);
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -50,15 +60,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC handlers
-ipcMain.handle('runCodeCounter', async (event , {dir}) => {
+// ✅ FIXED: Code counter with --by-file for full breakdown
+ipcMain.handle('runCodeCounter', async (event, {dir}) => {
   const sccPath = getSccPath();
   
   try {
-    // Run SCC command
-    const { stdout } = await execPromise(`"${sccPath}" --format json "${dir}"`);
-
-    // Parse JSON
+    // ✅ Add --by-file for directories + files breakdown like sample
+    const { stdout } = await execPromise(`"${sccPath}" --format json --by-file "${dir}"`);
     const data = JSON.parse(stdout);
     return { success: true, data };
   } catch (error) {
@@ -67,13 +75,10 @@ ipcMain.handle('runCodeCounter', async (event , {dir}) => {
   }
 });
 
-ipcMain.handle('indexDirectory', async (event , {dir}) => {
-  
+ipcMain.handle('indexDirectory', async (event, {dir}) => {
   try {
-    // trying parser
     await parseDir(dir);
     return true;
-
   } catch (error) {
     console.error('Index error:', error);
     return false;
@@ -97,6 +102,77 @@ ipcMain.handle('selectDirectory', async () => {
   }
 });
 
+// ✅ NEW POLICY QA IPC handlers
+ipcMain.handle("policySelectFiles", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      {
+        name: "Policy files",
+        extensions: ["txt", "md", "docx"],
+      },
+    ],
+  });
+
+  if (result.canceled || !result.filePaths.length) {
+    return { success: false, filePaths: [] };
+  }
+  return { success: true, filePaths: result.filePaths };
+});
+
+ipcMain.handle("policyIndexPolicies", async (event, { filePaths }) => {
+  try {
+    const summary = await indexPolicies(filePaths);
+    return { success: true, ...summary };
+  } catch (err) {
+    console.error("policyIndexPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("policyAskQuestion", async (event, { question }) => {
+  try {
+    const result = await askPolicyQuestion(question);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyAskQuestion error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("policyListPolicies", async () => {
+  try {
+    const result = listPolicyDocs();
+    return result;
+  } catch (err) {
+    console.error("policyListPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("policyRemovePolicy", async (event, { docName }) => {
+  try {
+    if (!docName) {
+      return { success: false, error: "docName is required" };
+    }
+    const result = removePolicyByDocName(docName);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyRemovePolicy error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("policyClearIndex", async () => {
+  try {
+    const result = clearPolicyIndex();
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyClearIndex error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
 const SYSTEMPROMPT = `
 You are a member of a professional due diligence team. 
 Your role is to collaborate with colleagues to evaluate companies, projects, and investments. 
@@ -112,42 +188,47 @@ After the bullet points, always include a **closing summary line** starting with
 "Overall Assessment: ..."  
 
 Keep responses concise and professional.  
-If a section has no content, include it anyway with “None identified.”  
+If a section has no content, include it anyway with "None identified."  
 Maintain a neutral, factual tone suitable for internal team discussions.  
 Do not write long paragraphs and do not break character as a team member.
 `;
 
 let chatHistory = [];
 
+/// ✅ FIXED: Chat Stream - Use NEXT ID for Response
 ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
-
+  console.log(`🚀 OLLAMA REQUEST: USER_ID=${id}, PROMPT="${promptText.slice(0,100)}..."`);
+  
   const responseId = id + 1;
-
+  console.log(`📡 Sending chunks to RESPONSE_ID=${responseId}`);
+  
   try {
     const stream = await ollama.chat({
       model: "gemma3:4b",
       messages: [{ role: "system", content: SYSTEMPROMPT }, 
-                  ...chatHistory,
-                  { role: "user", content: promptText }],
+                 { role: "user", content: promptText }],
       stream: true,
       keep_alive: 300
     });
 
     let fullResponse = "";
+    let chunkCount = 0;
     for await (const part of stream) {
       const chunk = part?.message?.content ?? "";
-      fullResponse += chunk;
-      event.sender.send('ollamaChatChunk', { id: responseId, chunk: chunk }); // send token-by-token
+      if (chunk) {
+        fullResponse += chunk;
+        chunkCount++;
+        console.log(`📦 Chunk ${chunkCount} [ID=${responseId}]: "${chunk}"`);
+        event.sender.send('ollamaChatChunk', { id: responseId, chunk: chunk });
+      }
     }
 
-    // light weight context window
-    // Keep only the last 10 messages
-    // add prompt and response to context window
+    console.log(`✅ OLLAMA COMPLETE: ${chunkCount} chunks, ${fullResponse.length} chars, ID=${responseId}`);
+    
     chatHistory = chatHistory.slice(-10);
     chatHistory.push({ role: "user", content: promptText });
     chatHistory.push({ role: "assistant", content: fullResponse });
 
-    // end stream
     event.sender.send("ollamaChatDone", { id: responseId }); 
 
   } catch (err) {
@@ -157,17 +238,119 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
   }
 });
 
-ipcMain.on('ollamaEmbed', async (event, {promptText}) => {
-
+ipcMain.handle('ollamaEmbed', async (event, {promptText}) => {
   try {
     const data = await ollama.embeddings({ 
       model: 'nomic-embed-text', 
       prompt: promptText 
     })
     return { success: true, data };
-
   } catch (err) {
     console.error("Embedding error:", err);
     return { success: false, err };
   }
 });
+
+// ✅ UPDATED REPORT GENERATION with full SCC breakdown support
+ipcMain.handle('generateReport', async (event, { projectName, reportType, userId, data = {} }) => {
+  try {
+    if (!projectName || !userId) {
+      return { success: false, error: 'Missing project name or user ID' };
+    }
+
+    const reportsDir = path.join(app.getPath('userData'), 'reports', userId);
+    await fs.promises.mkdir(reportsDir, { recursive: true });
+    
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_${reportType}_${timestamp}.txt`;
+    const filepath = path.join(reportsDir, filename);
+
+    const { rawSccData = [], docSummaries = [], codeSummary = {} } = data;
+    
+    console.log(`📊 Report: ${rawSccData.length} SCC langs, ${docSummaries.length} docs`);
+
+    let reportContent = `Date : ${new Date().toLocaleString()}\n`;
+    reportContent += `Directory : ${projectName}\n`;
+
+    const sum = rawSccData.reduce((acc, lang) => ({
+      files: (acc.files || 0) + (lang.Count || 0),
+      code: (acc.code || 0) + (lang.Code || 0),
+      comment: (acc.comment || 0) + (lang.Comment || 0),
+      blank: (acc.blank || 0) + (lang.Blank || 0),
+      total: (acc.total || 0) + ((lang.Code || 0) + (lang.Comment || 0) + (lang.Blank || 0))
+    }), {});
+    
+    reportContent += `Total : ${sum.files} files,  ${sum.code} codes, ${sum.comment} comments, ${sum.blank} blanks, all ${sum.total} lines\n\n`;
+
+    // Languages table
+    reportContent += `Languages\n`;
+    reportContent += `+------------+------------+------------+------------+------------+------------+\n`;
+    reportContent += `|language    |files       |code        |comment     |blank       |total       |\n`;
+    reportContent += `+------------+------------+------------+------------+------------+------------+\n`;
+    
+    rawSccData.forEach((lang) => {
+      const total = (lang.Code || 0) + (lang.Comment || 0) + (lang.Blank || 0);
+      reportContent += `|${pad(lang.Name || 'N/A', 10, true)}|${pad(lang.Count || 0, 10)}|${pad(lang.Code || 0, 10)}|${pad(lang.Comment || 0, 10)}|${pad(lang.Blank || 0, 10)}|${pad(total, 10)}|\n`;
+    });
+    
+    reportContent += `+------------+------------+------------+------------+------------+------------+\n\n`;
+
+    // Document review
+    if (docSummaries.length > 0) {
+      reportContent += `## 📄 Document Review (${docSummaries.length} docs)\n\n`;
+      docSummaries.slice(0, 3).forEach((doc) => {
+        reportContent += `**${doc.documentName}**\n${(doc.summary || '').slice(0, 300)}...\n\n`;
+      });
+    }
+
+    const aiPrompt = `Professional due diligence assessment for ${projectName}:\n\n${JSON.stringify({sum, rawSccData: rawSccData.slice(0,5), docs: docSummaries.length})}\n\nFormat: ## AI Assessment\n### Key Findings\n### Risks\n### Recommendations`;
+    
+    const response = await ollama.chat({
+      model: "gemma3:4b",
+      messages: [{ role: "system", content: SYSTEMPROMPT }, { role: "user", content: aiPrompt }]
+    });
+
+    reportContent += `${response.message?.content || ''}\n\n`;
+    reportContent += `---\nGenerated by Due Diligence AI Agent | Fellows Consulting Group`;
+
+    await fs.promises.writeFile(filepath, reportContent, 'utf8');
+    console.log(`✅ SCC Report generated: ${filepath}`);
+
+    return { success: true, filename, filepath };
+  } catch (err) {
+    console.error('Report error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('downloadReport', async (event, { filepath }) => {
+  try {
+    if (!filepath || !fs.existsSync(filepath)) {
+      return { success: false, error: 'Report file not found' };
+    }
+
+    const { filePath } = await dialog.showSaveDialog({
+      defaultPath: path.basename(filepath),
+      filters: [{ name: 'Text Files', extensions: ['txt'] }]
+    });
+    
+    if (!filePath) {
+      return { success: false, error: 'Download cancelled by user' };
+    }
+    
+    await fs.promises.copyFile(filepath, filePath);
+    console.log(`Report downloaded to: ${filePath}`);
+    
+    return { success: true, savedAs: filePath };
+  } catch (err) {
+    console.error('Download error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+function pad(str, length, alignLeft = false) {
+  str = String(str);
+  if (str.length >= length) return str.slice(0, length);
+  const padding = " ".repeat(length - str.length);
+  return alignLeft ? str + padding : padding + str;
+}
