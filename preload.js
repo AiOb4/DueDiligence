@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
 
   indexDir: (dir) => ipcRenderer.invoke('indexDir', (dir)),
   ollamaEmbed: (promptText) => ipcRenderer.invoke('ollamaEmbed', {promptText}),
+  ollamaResponse: (sysPrompt, promptText) => ipcRenderer.invoke('ollamaResponse', {sysPrompt, promptText}),
 
   sendChat: (id, promptText) => ipcRenderer.send('ollamaChatStream', { id, promptText }),
 

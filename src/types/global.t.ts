@@ -14,6 +14,7 @@ declare global {
     api: {
       selectDirectory: () => Promise<string | null>;
       runCodeCounter: (dir: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+      ollamaResponse: (sysPrompt: string, promptText: string) => Promise<{ success: boolean; data?: any; err?: any }>;
       
       /**
        * Send a message to start a streamed chat with Ollama

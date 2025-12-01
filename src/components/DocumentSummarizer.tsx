@@ -195,116 +195,22 @@ export default function DocumentSummarizer() {
     setError("")
     setSaveSuccessMessage(null)
     setSummary("")
-    fullSummaryRef.current = "";
-    
-    const responseId = Date.now();
-    currentResponseIdRef.current = responseId;
-    
-    console.log("🔍 DEBUG - window.api:", !!window?.api);
-    console.log("🔍 DEBUG - window.api.onChunk:", !!window?.api?.onChunk);
     
     try {
       const fileContent = await extractTextFromFile(file);
-      console.log(`📄 Extracted ${fileContent.length} chars from ${file.name}`);
+      const finalSummary = await window.api.ollamaResponse("Summarize this text", fileContent);
+      setSummary(finalSummary.data);
       
-      const prompt = `You are a due diligence expert.
-
-PROJECT: "${projectName}"
-DOCUMENT: ${file.name} (${(file.size/1024).toFixed(0)} KB)
-EXTRACTED CONTENT: ${fileContent}
-
-Due diligence summary in this EXACT format:
-
-AI SUMMARY of ${file.name}
-
-KEY FINDINGS:
-• 
-• 
-
-RISKS & OBSERVATIONS:
-• 
-
-RECOMMENDATIONS:
-• 
-
-Overall Assessment: `;
-
-      console.log(`🚀 Sending to Ollama: ID=${responseId}`);
-
-      // 🔥 TRY MULTIPLE IPC METHODS (fallback chain)
-      if (window.api && window.api.sendChat) {
-        window.api.sendChat(responseId, prompt);
-        
-        // Method 1: Standard onChunk
-        if (window.api.onChunk) {
-          (window.api.onChunk as any)((chunkData: any) => {
-            console.log("📦 METHOD 1 - CHUNK:", chunkData.id, chunkData.chunk?.slice(0, 30));
-            if (chunkData.id == responseId) {
-              fullSummaryRef.current += chunkData.chunk || '';
-              setSummary(fullSummaryRef.current);
-            }
-          });
-        }
-        
-        // Method 2: Global window events
-        const handleChunk = (e: any) => {
-          const chunkData = e.detail;
-          console.log("📦 METHOD 2 - CHUNK:", chunkData.id, chunkData.chunk?.slice(0, 30));
-          if (chunkData.id == responseId) {
-            fullSummaryRef.current += chunkData.chunk || '';
-            setSummary(fullSummaryRef.current);
-          }
-        };
-        
-        window.addEventListener('ollama-chunk', handleChunk);
-        
-        // Method 3: Custom event check
-        const checkCustomEvent = () => {
-          const event = new CustomEvent('ollama-chunk', { 
-            detail: { id: responseId, chunk: 'TEST' } 
-          });
-          window.dispatchEvent(event);
-        };
-        setTimeout(checkCustomEvent, 1000);
-      }
-
-      // ⏳ Wait 30s max (reduced for testing)
-      await new Promise(resolve => setTimeout(resolve, 30000));
-
-      const finalSummary = fullSummaryRef.current.trim() || summary.trim();
-      
-      if (!finalSummary) {
-        // 🔥 FALLBACK: Generate mock summary for demo
-        const mockSummary = `AI SUMMARY of ${file.name}
-
-KEY FINDINGS:
-• File successfully processed (${(file.size/1024).toFixed(0)} KB)
-• Pure JavaScript text extraction working
-• Ready for Ollama integration
-
-RISKS & OBSERVATIONS:
-• IPC bridge needs debugging
-
-RECOMMENDATIONS:
-• Check Electron preload script
-• Verify window.api.onChunk registration
-
-Overall Assessment: Demo-ready with fallback`;
-        
-        setSummary(mockSummary);
-        console.log("🔥 FALLBACK: Using mock summary for demo");
-      }
-
-      console.log("✅ Summary ready:", finalSummary.length, "chars");
-
       const analyzedDate = new Date().toISOString().replace("T", " ").split(".")[0];
       const documentData = {
         projectName,
         documentName: file.name,
-        summary: finalSummary || summary,
+        summary: summary,
         pageCount: file.size > 1000000 ? Math.floor(file.size / 1000000) + 1 : 1,
         analyzedDate
       };
+
+      setLoading(false);
 
       await saveDocumentResult(documentData);
       

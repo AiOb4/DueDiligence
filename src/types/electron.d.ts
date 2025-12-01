@@ -4,6 +4,7 @@ interface ElectronAPI {
   runCodeCounter: (dir: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   indexDir: (dir: string) => Promise<boolean>;
   ollamaEmbed: (promptText: string) => Promise<{ success: boolean; data?: any; err?: any }>;
+  ollamaResponse: (sysPrompt: string, promptText: string) => Promise<{ success: boolean; data?: any; err?: any }>;
   sendChat: (id: number, promptText: string) => void;
   onChunk: (callback: (data: { id: number; chunk: string }) => void) => () => void;
   onDone: (callback: (data: { id: number }) => void) => () => void;

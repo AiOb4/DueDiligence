@@ -238,6 +238,22 @@ ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
   }
 });
 
+ipcMain.handle('ollamaResponse', async (event, {sysPrompt, promptText}) => {
+  
+  try {
+    const response = await ollama.chat({
+      model: "gemma3:4b",
+      messages: [{ role: "system", content: sysPrompt }, 
+                 { role: "user", content: promptText }],
+      keep_alive: 300
+    });
+    return { success: true, response };
+  } catch (err) {
+    console.error("Response error:", err);
+    return { success: false, err };
+  }
+});
+
 ipcMain.handle('ollamaEmbed', async (event, {promptText}) => {
   try {
     const data = await ollama.embeddings({ 
