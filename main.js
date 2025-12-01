@@ -247,7 +247,10 @@ ipcMain.handle('ollamaResponse', async (event, {sysPrompt, promptText}) => {
                  { role: "user", content: promptText }],
       keep_alive: 300
     });
-    return { success: true, response };
+
+    console.log(response.message);
+
+    return { success: true, data: response.message.content };
   } catch (err) {
     console.error("Response error:", err);
     return { success: false, err };

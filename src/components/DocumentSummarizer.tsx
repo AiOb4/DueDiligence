@@ -198,8 +198,11 @@ export default function DocumentSummarizer() {
     
     try {
       const fileContent = await extractTextFromFile(file);
-      const finalSummary = await window.api.ollamaResponse("Summarize this text", fileContent);
+      const finalSummary = await window.api.ollamaResponse("Summarize this text in 5 sentences", fileContent);
       setSummary(finalSummary.data);
+
+      console.log(summary);
+      
       
       const analyzedDate = new Date().toISOString().replace("T", " ").split(".")[0];
       const documentData = {
@@ -211,6 +214,7 @@ export default function DocumentSummarizer() {
       };
 
       setLoading(false);
+      setSelectedDocument(documentData);
 
       await saveDocumentResult(documentData);
       
