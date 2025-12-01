@@ -59,3 +59,8 @@ contextBridge.exposeInMainWorld("env", {
   FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
   FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
 });
+
+contextBridge.exposeInMainWorld("ollamaInstaller", {
+  onProgress: (callback) => ipcRenderer.on("ollama-progress", (_, data) => callback(data)),
+  onDone: (callback) => ipcRenderer.on("ollama-done", callback)
+});
