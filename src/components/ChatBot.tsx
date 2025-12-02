@@ -3,6 +3,10 @@
 import React from "react"
 import ReactMarkdown from "react-markdown";
 import { useState, useRef, useEffect, useCallback } from "react"
+import { auth } from "../firebase/firebaseConfig";
+import { getFirestore, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+
+const db = getFirestore();
 
 interface Message {
   id: number
@@ -34,12 +38,81 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const streamingRef = useRef<Set<number>>(new Set())
   const removeListenersRef = useRef<{ removeChunk?: () => void; removeDone?: () => void }>({})
-
-  // ✅ FIX 1: isStreaming computed value (used in disabled checks)
-  const isStreaming = streamingRef.current.size > 0
+  const [isStreaming, setIsStreaming] = useState(false)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [])
+
+  // Fetch user's project data to provide context
+  const getUserContext = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) return "";
+
+    try {
+      let contextParts: string[] = [];
+
+      // 1. Get saved code analyses from local storage
+      try {
+        const projectsResult = await window.api.getProjectList();
+        if (projectsResult.success && projectsResult.projects.length > 0) {
+          contextParts.push("=== ANALYZED PROJECTS ===");
+          projectsResult.projects.slice(0, 5).forEach((proj: any) => {
+            contextParts.push(
+              `Project: ${proj.name}\n` +
+              `Languages: ${proj.languages?.map((l: any) => l.name).join(", ") || "N/A"}\n` +
+              `Total Files: ${proj.totalFiles}, Code Lines: ${proj.totalCode}\n` +
+              `Analyzed: ${proj.analyzedDate}`
+            );
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects:", err);
+      }
+
+      // 2. Get document summaries from Firebase
+      try {
+        const docsRef = collection(db, "userStats", user.uid, "documents");
+        const q = query(docsRef, orderBy("createdAt", "desc"), limit(10));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          contextParts.push("\n=== DOCUMENT SUMMARIES ===");
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            contextParts.push(
+              `Document: ${data.documentName}\n` +
+              `Project: ${data.projectName}\n` +
+              `Summary: ${data.summary?.substring(0, 200)}...`
+            );
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch documents:", err);
+      }
+
+      // 3. Get indexed policies
+      try {
+        const policiesResult = await window.api.policyListPolicies();
+        if (policiesResult.success && policiesResult.totalDocs > 0) {
+          contextParts.push("\n=== INDEXED POLICIES ===");
+          contextParts.push(
+            `Total Policy Documents: ${policiesResult.totalDocs}\n` +
+            `Total Chunks: ${policiesResult.totalChunks}\n` +
+            `Policies: ${policiesResult.policies?.map((p: any) => p.docName).join(", ")}`
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch policies:", err);
+      }
+
+      return contextParts.length > 0
+        ? "\n\n--- USER'S PROJECT DATA ---\n" + contextParts.join("\n\n") + "\n--- END USER DATA ---\n\n"
+        : "";
+    } catch (err) {
+      console.error("Error fetching user context:", err);
+      return "";
+    }
   }, [])
 
   // ✅ FIX 2: Move handlers OUTSIDE useEffect + useCallback
@@ -64,6 +137,9 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
   const handleDone = useCallback((data: DoneEvent) => {
     console.log(`✅ Browser stream done: ${data.id}`)
     streamingRef.current.delete(data.id)
+    if (streamingRef.current.size === 0) {
+      setIsStreaming(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -85,13 +161,14 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
 
     return () => {
       streamingRef.current.clear()
+      setIsStreaming(false)
       removeListenersRef.current.removeChunk?.()
       removeListenersRef.current.removeDone?.()
     }
   }, [isOpen, handleChunk, handleDone]) // ✅ Add dependencies
 
-  // ✅ FIX 3: handleSend uses isStreaming from ref
-  const handleSend = useCallback(() => {
+  // ✅ FIX 3: handleSend uses isStreaming from ref + includes user context
+  const handleSend = useCallback(async () => {
     if (inputValue.trim() === "" || isStreaming) return
 
     const userMessageId = Date.now() // ✅ Fix ID collision
@@ -105,9 +182,11 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     }
 
     setMessages(prev => [...prev, userMessage])
+    const originalInput = inputValue;
     setInputValue("")
 
     streamingRef.current.add(responseId)
+    setIsStreaming(true)
 
     setMessages(prev => [...prev, {
       id: responseId,
@@ -117,9 +196,18 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
       isThinking: true
     }])
 
+    // Fetch user's project data to provide context
+    const userContext = await getUserContext();
+
+    // Combine user's question with their project data
+    const enhancedPrompt = userContext
+      ? `${userContext}User Question: ${originalInput}`
+      : originalInput;
+
     console.log(`🚀 Send ID=${userMessageId}, expect response ID=${responseId}`)
-    window.api.sendChat(userMessageId, inputValue)
-  }, [inputValue, isStreaming])
+    console.log(`📊 Context included: ${userContext ? 'YES' : 'NO'}`)
+    window.api.sendChat(userMessageId, enhancedPrompt)
+  }, [inputValue, isStreaming, getUserContext])
 
   // ✅ FIX 4: handleKeyPress uses handleSend
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {

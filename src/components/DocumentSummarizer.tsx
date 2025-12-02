@@ -320,12 +320,94 @@ export default function DocumentSummarizer() {
       {/* Saved documents */}
       <div style={{ marginTop: "30px" }}>
         <h3>Your Documents ({documents.length})</h3>
-        {documents.map((doc) => (
-          <div key={doc.firebaseId} style={{ padding: "15px", marginBottom: "10px", background: "#f0f8ff", borderRadius: "8px" }}>
-            <strong>{doc.documentName}</strong> - {doc.projectName}
-          </div>
-        ))}
+        {loadingSaved ? (
+          <p>Loading saved documents...</p>
+        ) : documents.length === 0 ? (
+          <p style={{ color: "#666" }}>No documents saved yet. Generate your first summary!</p>
+        ) : (
+          documents.map((doc) => (
+            <div
+              key={doc.firebaseId}
+              style={{
+                padding: "15px",
+                marginBottom: "10px",
+                background: selectedDocument?.firebaseId === doc.firebaseId ? "#e3f2fd" : "#f0f8ff",
+                borderRadius: "8px",
+                cursor: "pointer",
+                border: selectedDocument?.firebaseId === doc.firebaseId ? "2px solid #2196f3" : "1px solid #e0e0e0",
+                transition: "all 0.2s"
+              }}
+              onClick={() => setSelectedDocument(doc)}
+              onMouseEnter={(e) => {
+                if (selectedDocument?.firebaseId !== doc.firebaseId) {
+                  e.currentTarget.style.background = "#e8f4f8";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedDocument?.firebaseId !== doc.firebaseId) {
+                  e.currentTarget.style.background = "#f0f8ff";
+                }
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong>{doc.documentName}</strong> - {doc.projectName}
+                  <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
+                    {doc.pageCount} page{doc.pageCount !== 1 ? 's' : ''} • {doc.analyzedDate}
+                  </div>
+                </div>
+                <button
+                  className="button button-secondary"
+                  style={{ padding: "8px 16px", fontSize: "14px" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const contentToDownload = `Document: ${doc.documentName}\nProject: ${doc.projectName}\nDate: ${doc.analyzedDate}\nPages: ${doc.pageCount}\n\n${doc.summary}`;
+                    const blob = new Blob([contentToDownload], { type: "text/plain;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `summary_${doc.documentName.replace(/\.[^/.]+$/, "")}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Download
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
+
+      {/* Selected document details */}
+      {selectedDocument && (
+        <div style={{ marginTop: "20px", padding: "20px", background: "#fff", borderRadius: "8px", border: "1px solid #e0e0e0" }}>
+          <h3 style={{ marginBottom: "15px" }}>{selectedDocument.documentName}</h3>
+          <div style={{ marginBottom: "10px", color: "#666" }}>
+            <strong>Project:</strong> {selectedDocument.projectName} <br />
+            <strong>Analyzed:</strong> {selectedDocument.analyzedDate} <br />
+            <strong>Pages:</strong> {selectedDocument.pageCount}
+          </div>
+          <div style={{
+            backgroundColor: "#f8f9fa",
+            padding: "20px",
+            borderRadius: "8px",
+            borderLeft: "4px solid #007bff",
+            marginTop: "15px"
+          }}>
+            <h4 style={{ marginBottom: "10px" }}>Summary:</h4>
+            <pre style={{
+              margin: 0,
+              whiteSpace: "pre-wrap",
+              fontSize: "14px",
+              lineHeight: "1.5",
+              color: "#2c3e50"
+            }}>
+              {selectedDocument.summary}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

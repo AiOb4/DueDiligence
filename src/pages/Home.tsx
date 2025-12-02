@@ -65,9 +65,8 @@ export default function Home() {
             Account
           </button>
           <button
-            className="nav-button"
+            className="nav-button-logout"
             onClick={() => setIsAuthenticated(false)}
-            style={{ marginLeft: "auto", backgroundColor: "#dc3545" }}
           >
             Logout
           </button>

@@ -113,7 +113,7 @@ body {
   color: white;
   padding: 20px;
   margin-bottom: 30px;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
 }
 
 .header h1 {
@@ -153,6 +153,31 @@ body {
 .nav-button.active {
   background-color: #3498db;
   color: white;
+}
+
+.nav-button-logout {
+  padding: 12px 24px;
+  background-color: #e74c3c;
+  border: 2px solid #e74c3c;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.nav-button-logout:hover {
+  background-color: #c0392b;
+  border-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.nav-button-logout:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(231, 76, 60, 0.2);
 }
 
 .card {
