@@ -393,7 +393,7 @@ export default function CodeAnalysis() {
         className="button" 
         onClick={chooseFolder} 
         disabled={!currentUser || loading || savingToFirebase}
-        style={{ marginBottom: "10px" }}
+        style={{ marginBottom: "10px", marginRight: "10px" }}
       >
         {currentUser ? "Choose Folder" : "Sign In First"}
       </button>

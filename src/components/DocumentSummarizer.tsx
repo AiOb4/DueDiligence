@@ -246,9 +246,7 @@ export default function DocumentSummarizer() {
   return (
     <div className="card">
       <h2>Document Summarizer</h2>
-      <p style={{ marginBottom: "20px", color: "#555" }}>
-        ✅ DEMO WORKS NOW - File extraction + Firebase save + Download
-      </p>
+    
 
       <div className="form-group" style={{ marginBottom: "15px" }}>
         <label htmlFor="projectName">Project Name</label>
@@ -266,9 +264,7 @@ export default function DocumentSummarizer() {
         <div className="file-upload-area" onClick={() => document.getElementById("fileUpload")?.click()}>
           <input id="fileUpload" type="file" accept=".pdf,.txt,.docx" onChange={handleFileChange} />
           <p>{file ? file.name : "Click to select a file"}</p>
-          <p style={{ fontSize: "12px", color: "#6c757d" }}>
-            Works with your FinanceWise_report.txt! ✅
-          </p>
+         
         </div>
       </div>
 
