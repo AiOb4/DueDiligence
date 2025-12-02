@@ -3,6 +3,7 @@ import path from "path";
 import ollama from "ollama";
 import { fileURLToPath } from "url";
 import mammoth from "mammoth";
+import { ipcMain, dialog } from "electron";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +17,7 @@ const INDEX_FILE = path.join(RESOURCES_DIR, "policyIndex.json");
 let policyIndex = [];
 
 
-//Chunk a big text into semi-manageable pieces.
+// Chunk a big text into semi-manageable pieces.
 function chunkText(text, maxChars = 1200) {
   const chunks = [];
   let start = 0;
@@ -155,7 +156,12 @@ async function readPolicyFileAsText(fullPath) {
   }
 }
 
- // Index / re-index policies given a list of file paths.
+/**
+ * Index / re-index policies given a list of file paths.
+ * Merge strategy:
+ *  - For each uploaded docName, replace old chunks for that docName
+ *  - Keep all other docs intact
+ */
 export async function indexPolicies(filePaths) {
   if (!Array.isArray(filePaths) || filePaths.length === 0) {
     console.warn("[PolicyQA] indexPolicies called with no file paths.");
@@ -348,3 +354,80 @@ Answer:
     citations,
   };
 }
+
+
+// Let the user choose policy files to upload
+ipcMain.handle("policySelectFiles", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      {
+        name: "Policy files",
+        extensions: ["txt", "md", "docx"],
+      },
+    ],
+  });
+
+  if (result.canceled || !result.filePaths.length) {
+    return { success: false, filePaths: [] };
+  }
+  return { success: true, filePaths: result.filePaths };
+});
+
+// Build / refresh the policy embedding index from selected files
+ipcMain.handle("policyIndexPolicies", async (event, { filePaths }) => {
+  try {
+    const summary = await indexPolicies(filePaths);
+    return { success: true, ...summary };
+  } catch (err) {
+    console.error("policyIndexPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Answer a policy question using the indexed policies
+ipcMain.handle("policyAskQuestion", async (event, { question }) => {
+  try {
+    const result = await askPolicyQuestion(question);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyAskQuestion error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Returns a list of all currently indexed policy documents
+ipcMain.handle("policyListPolicies", async () => {
+  try {
+    const result = listPolicyDocs();
+    return result;
+  } catch (err) {
+    console.error("policyListPolicies error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Removes all chunks belonging to a specific policy document
+ipcMain.handle("policyRemovePolicy", async (event, { docName }) => {
+  try {
+    if (!docName) {
+      return { success: false, error: "docName is required" };
+    }
+    const result = removePolicyByDocName(docName);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyRemovePolicy error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Clears the entire policy index
+ipcMain.handle("policyClearIndex", async () => {
+  try {
+    const result = clearPolicyIndex();
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("policyClearIndex error:", err);
+    return { success: false, error: err.message };
+  }
+});

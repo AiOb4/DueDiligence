@@ -1,19 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { updateUsage } from "../firebase/dbUsage"; 
-import { auth } from "../firebase/firebaseConfig";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy,
-  onSnapshot 
-} from "firebase/firestore";
-import { getFirestore } from "firebase/firestore";
-
-const db = getFirestore();
+import { updateUsage } from "../firebase/dbUsage"
+import ReactMarkdown from "react-markdown"
+import jsPDF from "jspdf"
 
 export default function ReportGenerator() {
   const [reportType, setReportType] = useState("full")
@@ -21,168 +11,425 @@ export default function ReportGenerator() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
-  const [downloadPath, setDownloadPath] = useState("")
-  const [recentReports, setRecentReports] = useState<Array<any>>([])
-  const [projects, setProjects] = useState<string[]>([])
-  const [userId, setUserId] = useState("")
+  const [generatedReport, setGeneratedReport] = useState("")
+  const [reportId, setReportId] = useState("")
+  const [recentReports, setRecentReports] = useState<any[]>([])
+  const [availableProjects, setAvailableProjects] = useState<any[]>([])
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false)
 
-  // Load user data + projects on mount
+  // Load available projects and recent reports on mount
   useEffect(() => {
-    const user = auth.currentUser;
-    if (user) {
-      setUserId(user.uid);
-      
-      // Load unique project names from analyses + documents
-      const loadProjects = async () => {
-        try {
-          const analysesRef = collection(db, "userStats", user.uid, "analyses");
-          const docsRef = collection(db, "userStats", user.uid, "documents");
-          
-          const [analysesSnap, docsSnap] = await Promise.all([
-            getDocs(analysesRef),
-            getDocs(docsRef)
-          ]);
-          
-          // ✅ TYPE-SAFE: Explicit string typing
-          const projectSet = new Set<string>();
-          analysesSnap.docs.forEach((doc) => {
-            const data = doc.data() as any;
-            if (data.projectName && typeof data.projectName === 'string') {
-              projectSet.add(data.projectName);
-            }
-          });
-          docsSnap.docs.forEach((doc) => {
-            const data = doc.data() as any;
-            if (data.projectName && typeof data.projectName === 'string') {
-              projectSet.add(data.projectName);
-            }
-          });
-          
-          const projectsList = Array.from(projectSet);
-          setProjects(projectsList);
-          if (projectsList.length > 0) {
-            setProjectName(projectsList[0]);
-          }
-        } catch (err) {
-          console.error("Failed to load projects:", err);
-        }
-      };
+    loadAvailableProjects()
+    loadRecentReports()
+  }, [])
 
-      // Load recent reports
-      const reportsRef = collection(db, "userStats", user.uid, "reports");
-      const unsubscribe = onSnapshot(reportsRef, (snapshot) => {
-        setRecentReports(
-          snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate?.()
-          }))
-        );
-      });
-
-      loadProjects();
-      return unsubscribe;
+  const loadAvailableProjects = async () => {
+    try {
+      const result = await window.api.getProjectList()
+      if (result.success) {
+        setAvailableProjects(result.projects)
+      }
+    } catch (err) {
+      console.error("Failed to load projects:", err)
     }
-  }, []);
+  }
+
+  const loadRecentReports = async () => {
+    try {
+      const result = await window.api.getRecentReports()
+      if (result.success) {
+        setRecentReports(result.reports)
+      }
+    } catch (err) {
+      console.error("Failed to load reports:", err)
+    }
+  }
 
   const handleGenerate = async () => {
-    await updateUsage("reportGenerator");
+    await updateUsage("reportGenerator")
 
     if (!projectName.trim()) {
       setError("Please select a project");
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setSuccess(false);
-    setDownloadPath("");
+    setLoading(true)
+    setError("")
+    setSuccess(false)
+    setGeneratedReport("")
 
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("Not authenticated");
+      const result = await window.api.generateReport(projectName, reportType)
 
-      console.log(`📊 Loading ${projectName} data from FR1+FR2...`);
-
-      // ✅ PULL REAL DATA FROM FIREBASE (FR1 + FR2)
-      const [analysesSnap, docsSnap] = await Promise.all([
-        getDocs(query(collection(db, "userStats", user.uid, "analyses"), where("projectName", "==", projectName))),
-        getDocs(query(collection(db, "userStats", user.uid, "documents"), where("projectName", "==", projectName)))
-      ]);
-
-      // Extract real data
-      const codeAnalysis = analysesSnap.docs.map(doc => doc.data());
-      const docSummaries = docsSnap.docs.map(doc => doc.data());
-      
-      console.log(`📈 Found: ${codeAnalysis.length} analyses, ${docSummaries.length} summaries`);
-
-      // ✅ SEND REAL DATA TO MAIN.JS
-      const response = await (window.api as any).generateReport(
-        projectName, 
-        reportType, 
-        user.uid,
-        { codeAnalysis, docSummaries }  // ← REAL FR1+FR2 DATA!
-      );
-      
-      if (response.success) {
-        setSuccess(true);
-        setDownloadPath(response.filepath);
-        setError("");
-      } else {
-        setError(response.error);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownload = async (filepath: string) => {
-    if (!filepath) {
-      alert("No report path available to download.");
-      return;
-    }
-    
-    try {
-      const result = await (window.api as any).downloadReport(filepath);
-      
       if (result.success) {
-        alert(` Report downloaded to: ${result.savedAs}`);
+        setGeneratedReport(result.reportContent)
+        setReportId(result.reportId)
+        setSuccess(true)
+        // Refresh recent reports
+        await loadRecentReports()
       } else {
-        alert(` Failed to download: ${result.error}`);
+        setError(result.error || "Failed to generate report")
       }
     } catch (err: any) {
-      alert(` Download error: ${err.message}`);
+      setError(err.message || "Error generating report")
+    } finally {
+      setLoading(false)
     }
-  };
+  }
+
+  const downloadAsMarkdown = () => {
+    if (!generatedReport) return
+
+    const blob = new Blob([generatedReport], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${projectName.replace(/\s+/g, "_")}_report.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const downloadAsPDF = () => {
+    if (!generatedReport) return
+
+    const pdf = new jsPDF()
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 20
+    const maxWidth = pageWidth - 2 * margin
+    let yPosition = margin
+
+    // Helper function to add new page if needed
+    const checkPageBreak = (spaceNeeded: number) => {
+      if (yPosition + spaceNeeded > pageHeight - margin) {
+        pdf.addPage()
+        yPosition = margin
+        return true
+      }
+      return false
+    }
+
+    // Helper function to add text with word wrap
+    const addText = (text: string, fontSize: number, fontStyle: "normal" | "bold" | "italic" = "normal", color: number[] = [0, 0, 0]) => {
+      pdf.setFontSize(fontSize)
+      pdf.setFont("helvetica", fontStyle)
+      pdf.setTextColor(color[0], color[1], color[2])
+
+      const lines = pdf.splitTextToSize(text, maxWidth)
+      lines.forEach((line: string) => {
+        checkPageBreak(fontSize * 0.5)
+        pdf.text(line, margin, yPosition)
+        yPosition += fontSize * 0.5
+      })
+    }
+
+    // Title Page Background
+    pdf.setFillColor(52, 73, 94) // Dark blue-gray
+    pdf.rect(0, 0, pageWidth, 60, 'F')
+
+    // Title
+    pdf.setFontSize(24)
+    pdf.setFont("helvetica", "bold")
+    pdf.setTextColor(255, 255, 255)
+    pdf.text("DUE DILIGENCE REPORT", margin, 30)
+
+    // Project Name
+    pdf.setFontSize(18)
+    pdf.setFont("helvetica", "normal")
+    pdf.text(projectName, margin, 45)
+
+    // Reset text color
+    pdf.setTextColor(0, 0, 0)
+    yPosition = 70
+
+    // Metadata Box
+    pdf.setFillColor(236, 240, 241)
+    pdf.rect(margin, yPosition, maxWidth, 20, 'F')
+
+    pdf.setFontSize(10)
+    pdf.setFont("helvetica", "normal")
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, margin + 5, yPosition + 8)
+    pdf.text(`Report Type: ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}`, margin + 5, yPosition + 15)
+
+    yPosition += 30
+
+    // Parse markdown content
+    const lines = generatedReport.split('\n')
+
+    // Track which major section we're in for smart page breaks
+    const majorSections = [
+      'EXECUTIVE SUMMARY',
+      'CODEBASE OVERVIEW',
+      'TECHNICAL ANALYSIS',
+      'RISK ASSESSMENT',
+      'OPPORTUNITIES',
+      'RECOMMENDATIONS'
+    ]
+
+    let currentSectionIndex = -1
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+
+      // Skip empty lines but add spacing
+      if (line === '') {
+        yPosition += 4
+        continue
+      }
+
+      // Skip horizontal rules (---)
+      if (line.match(/^-{3,}$/) || line.match(/^={3,}$/)) {
+        continue
+      }
+
+      // Headers (## Header)
+      if (line.match(/^#{1,6}\s/)) {
+        const level = line.match(/^#{1,6}/)?.[0].length || 1
+        const text = line.replace(/^#{1,6}\s/, '').toUpperCase()
+
+        // Check if this is a major section that should start on a new page
+        const sectionIndex = majorSections.findIndex(section => text.includes(section))
+
+        if (level === 2 && sectionIndex !== -1 && currentSectionIndex !== sectionIndex) {
+          // Force new page for major sections (except first one)
+          if (currentSectionIndex !== -1) {
+            // Specific page break rules:
+            // Executive Summary stays on page 1
+            // Codebase Overview + Technical Analysis on page 2
+            // Risk Assessment + Opportunities on page 3
+            // Recommendations on page 4
+
+            if (sectionIndex === 1 || // Codebase Overview
+                sectionIndex === 3 || // Risk Assessment
+                sectionIndex === 5) { // Recommendations
+              pdf.addPage()
+              yPosition = margin
+            }
+          }
+          currentSectionIndex = sectionIndex
+        }
+
+        checkPageBreak(20)
+        yPosition += 8
+
+        if (level === 1) {
+          // H1 - Major section
+          pdf.setFillColor(52, 152, 219)
+          pdf.rect(margin, yPosition - 5, maxWidth, 12, 'F')
+          pdf.setFontSize(16)
+          pdf.setFont("helvetica", "bold")
+          pdf.setTextColor(255, 255, 255)
+          pdf.text(text, margin + 3, yPosition + 3)
+          pdf.setTextColor(0, 0, 0)
+          yPosition += 18
+        } else if (level === 2) {
+          // H2 - Section header
+          pdf.setFontSize(15)
+          pdf.setFont("helvetica", "bold")
+          pdf.setTextColor(41, 128, 185)
+          const wrapped = pdf.splitTextToSize(text, maxWidth)
+          wrapped.forEach((line: string) => {
+            checkPageBreak(10)
+            pdf.text(line, margin, yPosition)
+            yPosition += 7
+          })
+          pdf.setDrawColor(41, 128, 185)
+          pdf.setLineWidth(0.7)
+          pdf.line(margin, yPosition + 1, margin + 60, yPosition + 1)
+          pdf.setTextColor(0, 0, 0)
+          yPosition += 5
+        } else {
+          // H3+ - Subsection
+          pdf.setFontSize(12)
+          pdf.setFont("helvetica", "bold")
+          pdf.setTextColor(52, 73, 94)
+          const wrapped = pdf.splitTextToSize(text, maxWidth)
+          wrapped.forEach((line: string) => {
+            checkPageBreak(8)
+            pdf.text(line, margin, yPosition)
+            yPosition += 6
+          })
+          pdf.setTextColor(0, 0, 0)
+          yPosition += 4
+        }
+        continue
+      }
+
+      // Bullet points (- or * at start)
+      if (line.match(/^[\*\-]\s/)) {
+        const text = line.replace(/^[\*\-]\s/, '')
+        const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '')
+
+        // All bullet points - no subheading conversion
+        pdf.setFontSize(10)
+        pdf.setFont("helvetica", "normal")
+
+        // Add bullet point (indented more to align with text)
+        const bulletX = margin + 5
+        const textX = margin + 11
+
+        pdf.circle(bulletX, yPosition - 1.5, 0.8, 'F')
+
+        const wrapped = pdf.splitTextToSize(cleanText, maxWidth - 11)
+        wrapped.forEach((line: string, idx: number) => {
+          checkPageBreak(6)
+          pdf.text(line, textX, yPosition)
+          yPosition += 5
+        })
+        yPosition += 1
+        continue
+      }
+
+      // Bold text (**text**)
+      if (line.includes('**')) {
+        const parts = line.split(/(\*\*.*?\*\*)/)
+        pdf.setFontSize(10)
+        let xPos = margin
+
+        parts.forEach(part => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            const text = part.replace(/\*\*/g, '')
+            pdf.setFont("helvetica", "bold")
+            pdf.text(text, xPos, yPosition)
+            xPos += pdf.getTextWidth(text)
+          } else if (part) {
+            pdf.setFont("helvetica", "normal")
+            const wrapped = pdf.splitTextToSize(part, maxWidth - (xPos - margin))
+            wrapped.forEach((line: string, idx: number) => {
+              if (idx > 0) {
+                checkPageBreak(6)
+                yPosition += 5
+                xPos = margin
+              }
+              pdf.text(line, xPos, yPosition)
+              xPos += pdf.getTextWidth(line)
+            })
+          }
+        })
+        yPosition += 6
+        continue
+      }
+
+      // Regular paragraph text
+      pdf.setFontSize(10)
+      pdf.setFont("helvetica", "normal")
+      const cleanText = line.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '')
+      const wrapped = pdf.splitTextToSize(cleanText, maxWidth)
+
+      wrapped.forEach((line: string) => {
+        checkPageBreak(6)
+        pdf.text(line, margin, yPosition)
+        yPosition += 5
+      })
+      yPosition += 2
+    }
+
+    // Footer on each page
+    const pageCount = pdf.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i)
+      pdf.setFontSize(8)
+      pdf.setFont("helvetica", "normal")
+      pdf.setTextColor(128, 128, 128)
+      pdf.text(
+        `Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      )
+      pdf.text(
+        `${projectName} - Due Diligence Report`,
+        margin,
+        pageHeight - 10
+      )
+    }
+
+    pdf.save(`${projectName.replace(/\s+/g, "_")}_report.pdf`)
+  }
+
+  const downloadReport = async (reportId: string) => {
+    try {
+      const result = await window.api.getReport(reportId)
+      if (result.success) {
+        const content = result.report.content
+        const projectName = result.report.projectName
+
+        const blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${projectName.replace(/\s+/g, "_")}_report.md`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      console.error("Failed to download report:", err)
+    }
+  }
+
+  const selectProject = (project: any) => {
+    setProjectName(project.name)
+    setShowProjectDropdown(false)
+  }
+
+  const filteredProjects = availableProjects.filter(p =>
+    p.name.toLowerCase().includes(projectName.toLowerCase())
+  )
 
   return (
     <div className="card">
       <h2> Generate Reports </h2>
       <p style={{ marginBottom: "20px", color: "#555" }}>
-        Pulls <strong>Code Analysis + Document Summaries</strong> into professional reports.
+        Create comprehensive due diligence reports based on your code analysis.
       </p>
 
-      
-      <div className="form-group" style={{ marginBottom: "15px" }}>
-        <label htmlFor="projectName">Project Name <span style={{color: "#666", fontSize: "12px"}}>(from your analyses)</span></label>
-        <select
+      <div className="form-group" style={{ position: "relative" }}>
+        <label htmlFor="projectName">Project Name</label>
+        <input
           id="projectName"
+          type="text"
+          placeholder="Enter or select project name"
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          className="form-control"
-          disabled={loading}
-        >
-          <option value="">Select project...</option>
-          {projects.map((proj, i) => (
-            <option key={i} value={proj}>{proj}</option>
-          ))}
-        </select>
-        {projects.length === 0 && (
-          <p style={{ fontSize: "12px", color: "#999", marginTop: "5px" }}>
-             Run Code Analysis or Document Summarizer first to populate projects
-          </p>
+          onFocus={() => setShowProjectDropdown(true)}
+          onBlur={() => setTimeout(() => setShowProjectDropdown(false), 200)}
+        />
+
+        {showProjectDropdown && filteredProjects.length > 0 && (
+          <div style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            backgroundColor: "white",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            marginTop: "4px",
+            maxHeight: "200px",
+            overflowY: "auto",
+            zIndex: 1000,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}>
+            {filteredProjects.map((project, idx) => (
+              <div
+                key={idx}
+                onClick={() => selectProject(project)}
+                style={{
+                  padding: "10px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #eee",
+                  fontSize: "14px"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+              >
+                <strong>{project.name}</strong>
+                <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                  {project.totalFiles} files • {project.totalCode.toLocaleString()} lines • {new Date(project.analyzedDate).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -201,54 +448,82 @@ export default function ReportGenerator() {
         </select>
       </div>
 
-      <button 
-        className="button" 
-        onClick={handleGenerate} 
-        disabled={loading || !projectName || projects.length === 0}
+      <button
+        className="button"
+        onClick={handleGenerate}
+        disabled={loading || !projectName || availableProjects.length === 0}
       >
         {loading ? " Ollama Generating..." : " Generate & Download Report"}
       </button>
 
       {error && <div className="error">{error}</div>}
-      {loading && <div className="loading"> </div>}
 
-      {success && !loading && (
-        <div className="success" style={{ marginTop: "20px" }}>
-          <h3 style={{ marginBottom: "10px" }}> Report Generated Successfully!</h3>
+      {loading && (
+        <div className="loading">
+          <p>Generating report with AI... This may take 30-60 seconds.</p>
+          <p style={{ fontSize: "14px", color: "#666", marginTop: "8px" }}>
+            Analyzing codebase metrics and creating professional assessment...
+          </p>
+        </div>
+      )}
+
+      {success && !loading && generatedReport && (
+        <div className="success">
+          <h3 style={{ marginBottom: "10px" }}>Report Generated Successfully!</h3>
           <p style={{ marginBottom: "15px" }}>
             Your <strong>{reportType.toUpperCase()}</strong> report for "<strong>{projectName}</strong>" is ready.
           </p>
-          <button 
-            className="button" 
-            onClick={() => handleDownload(downloadPath)}
-            style={{ backgroundColor: "#28a745" }}
-          >
-             Download Report (.txt)
+          <button className="button" onClick={downloadAsMarkdown} style={{ marginRight: "10px" }}>
+            Download Markdown
           </button>
+          <button className="button" onClick={downloadAsPDF}>
+            Download PDF
+          </button>
+
+          <div style={{
+            marginTop: "20px",
+            padding: "20px",
+            backgroundColor: "#f9f9f9",
+            borderRadius: "8px",
+            maxHeight: "500px",
+            overflowY: "auto",
+            border: "1px solid #ddd"
+          }}>
+            <h4 style={{ marginBottom: "15px", color: "#333" }}>Generated Report Preview:</h4>
+            <div className="markdown-preview" style={{
+              lineHeight: "1.6",
+              color: "#333",
+              fontSize: "14px"
+            }}>
+              <ReactMarkdown>{generatedReport}</ReactMarkdown>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Recent Reports */}
       <div style={{ marginTop: "40px" }}>
-        <h3 style={{ marginBottom: "15px" }}>Recent Reports ({recentReports.length})</h3>
-        <ul className="report-list">
-          {recentReports.length === 0 && <li>No reports generated yet.</li>}
-          {recentReports.map(report => (
-            <li key={report.id} className="report-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px", border: "1px solid #ddd", marginBottom: "10px", borderRadius: "8px" }}>
-              <div className="report-item-info">
-                <h4>{report.projectName} - {report.reportType}</h4>
-                <p>Generated: {report.createdAt?.toLocaleDateString()}</p>
-              </div>
-              <button 
-                className="button button-secondary"
-                onClick={() => handleDownload(report.filepath)}
-                style={{ padding: "8px 16px", fontSize: "14px" }}
-              >
-                 Download
-              </button>
-            </li>
-          ))}
-        </ul>
+        <h3 style={{ marginBottom: "15px" }}>Recent Reports</h3>
+        {recentReports.length === 0 ? (
+          <p style={{ color: "#666" }}>No reports generated yet. Run a code analysis and generate your first report!</p>
+        ) : (
+          <ul className="report-list">
+            {recentReports.map((report, idx) => (
+              <li key={idx} className="report-item">
+                <div className="report-item-info">
+                  <h4>{report.projectName} - {report.reportType.charAt(0).toUpperCase() + report.reportType.slice(1)} Report</h4>
+                  <p>Generated on {new Date(report.generatedAt).toLocaleString()}</p>
+                </div>
+                <button
+                  className="button button-secondary"
+                  onClick={() => downloadReport(report.reportId)}
+                >
+                  Download
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div style={{ marginTop: "20px", fontSize: "12px", color: "#666", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>

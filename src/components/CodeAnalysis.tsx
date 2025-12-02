@@ -196,7 +196,17 @@ export default function CodeAnalysis() {
           fileBreakdown: files,
         };
 
-        await saveAnalysisResult(newProject);
+        // Save project data to local storage
+        const saveResult = await window.api.saveCodeAnalysis(newProject);
+        if (saveResult.success) {
+          console.log("✅ Project saved successfully");
+        } else {
+          console.warn("⚠️ Failed to save project:", saveResult.error);
+        }
+
+        setProjects([newProject, ...projects]);
+        setSelectedProject(newProject);
+        setLoading(false);
       } else {
         setError(res.error || "Failed to analyze the code.");
       }

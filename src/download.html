@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+    #status {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    #progress {
+      width: 100%;
+      background: #eee;
+      border-radius: 6px;
+      height: 20px;
+      overflow: hidden;
+    }
+    #bar {
+      height: 100%;
+      width: 0%;
+      background: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Downloading Ollama...</div>
+  <div id="progress"><div id="bar"></div></div>
+
+  <script>
+    window.ollamaInstaller.onProgress(({ message, percent }) => {
+      document.getElementById("status").innerText = message;
+      if (percent !== undefined) {
+        document.getElementById("bar").style.width = percent + "%";
+      }
+    });
+
+    window.ollamaInstaller.onDone(() => {
+      document.getElementById("status").innerText = "Finished!";
+      setTimeout(() => window.close(), 500);
+    });
+  </script>
+</body>
+</html>
