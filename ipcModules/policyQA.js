@@ -3,7 +3,7 @@ import path from "path";
 import ollama from "ollama";
 import { fileURLToPath } from "url";
 import mammoth from "mammoth";
-import { ipcMain } from "electron";
+import { ipcMain, dialog } from "electron";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

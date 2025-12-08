@@ -113,7 +113,7 @@ body {
   color: white;
   padding: 20px;
   margin-bottom: 30px;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
 }
 
 .header h1 {
@@ -153,6 +153,31 @@ body {
 .nav-button.active {
   background-color: #3498db;
   color: white;
+}
+
+.nav-button-logout {
+  padding: 12px 24px;
+  background-color: #e74c3c;
+  border: 2px solid #e74c3c;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.nav-button-logout:hover {
+  background-color: #c0392b;
+  border-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.nav-button-logout:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(231, 76, 60, 0.2);
 }
 
 .card {
@@ -1198,4 +1223,186 @@ body {
     bottom: 20px;
     right: 20px;
   }
+}
+
+/* Markdown preview styles for report generator */
+.markdown-preview h1 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.markdown-preview h2 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-top: 20px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 6px;
+}
+
+.markdown-preview h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #34495e;
+  margin-top: 16px;
+  margin-bottom: 10px;
+}
+
+.markdown-preview h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #34495e;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.markdown-preview h5 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #34495e;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.markdown-preview h6 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7f8c8d;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.markdown-preview p {
+  margin-bottom: 12px;
+  line-height: 1.7;
+  color: #333;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  margin-bottom: 16px;
+  padding-left: 28px;
+  line-height: 1.7;
+}
+
+.markdown-preview ul {
+  list-style-type: disc;
+}
+
+.markdown-preview ol {
+  list-style-type: decimal;
+}
+
+.markdown-preview li {
+  margin-bottom: 6px;
+  color: #333;
+  padding-left: 8px;
+}
+
+.markdown-preview li > ul,
+.markdown-preview li > ol {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  padding-left: 24px;
+}
+
+.markdown-preview ul ul {
+  list-style-type: circle;
+}
+
+.markdown-preview ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-preview strong {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.markdown-preview em {
+  font-style: italic;
+  color: #555;
+}
+
+.markdown-preview code {
+  background-color: #f1f3f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: #e83e8c;
+}
+
+.markdown-preview pre {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.markdown-preview pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.markdown-preview blockquote {
+  border-left: 4px solid #3498db;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #555;
+  font-style: italic;
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 2px solid #e9ecef;
+  margin: 24px 0;
+}
+
+.markdown-preview a {
+  color: #3498db;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.markdown-preview a:hover {
+  border-bottom-color: #3498db;
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.markdown-preview table th,
+.markdown-preview table td {
+  padding: 10px 12px;
+  border: 1px solid #e9ecef;
+  text-align: left;
+}
+
+.markdown-preview table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.markdown-preview table tr:nth-child(even) {
+  background-color: #f8f9fa;
 }

@@ -3,11 +3,14 @@ import fs from 'fs';
 import path from "path";
 import { spawn } from "child_process";
 import dotenv from "dotenv";
+import ollama from "ollama";
 import "./ipcModules/codeCounter.js";
 import "./ipcModules/ollama.js";
 import "./ipcModules/policyQA.js";
 import "./ipcModules/semanticSearch.js";
 import { loadPolicyIndexFromDisk } from "./ipcModules/policyQA.js";
+import "./ipcModules/projectStorage.js";
+import "./ipcModules/reportGenerator.js";
 import { fileURLToPath } from "url";
 import { pipeline } from 'stream/promises';
 import fetch from 'node-fetch';
@@ -167,7 +170,8 @@ app.whenReady().then(async () => {
   await startOllama(exe);
   
   createWindow();
-  
+
+  // ✅ POLICY QA: Load saved policy index on startup
   try {
     const reloadResult = loadPolicyIndexFromDisk();
     console.log("Policy index reload on startup:", reloadResult);
@@ -198,6 +202,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// selectDirectory handler - used for directory selection in UI
 ipcMain.handle('selectDirectory', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory']
@@ -207,5 +212,24 @@ ipcMain.handle('selectDirectory', async () => {
     return result.filePaths[0];
   } else {
     return null;
+  }
+});
+
+// ollamaResponse handler - used by DocumentSummarizer
+ipcMain.handle('ollamaResponse', async (event, {sysPrompt, promptText}) => {
+  try {
+    const response = await ollama.chat({
+      model: "gemma3:4b",
+      messages: [{ role: "system", content: sysPrompt },
+                 { role: "user", content: promptText }],
+      keep_alive: 300
+    });
+
+    console.log(response.message);
+
+    return { success: true, data: response.message.content };
+  } catch (err) {
+    console.error("Response error:", err);
+    return { success: false, err };
   }
 });

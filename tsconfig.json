@@ -22,13 +22,19 @@
         "components/*"
       ]
     },
-    "plugins": [
-    ],
-    "target": "ES2017"
+    "plugins": [],
+    "target": "ES2017",
+    "typeRoots": [
+      "./src/types",
+      "./types",
+      "./node_modules/@types"
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "src/types/**/*",
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",

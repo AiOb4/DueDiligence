@@ -104,12 +104,12 @@ export default function PolicyQA() {
     setPolicyStatus("");
 
     const api = (window as any).api;
-    if (!api || !api.selectPolicyFiles || !api.policyIndexPolicies) {
+    if (!api || !api.policySelectFiles || !api.policyIndexPolicies) {
       setError("Policy upload not available. Check preload.js / main.js.");
       return;
     }
 
-    const selection = await api.selectPolicyFiles();
+    const selection = await api.policySelectFiles();
     if (!selection?.success || !selection.filePaths?.length) {
       setPolicyStatus("No policy files selected.");
       return;
@@ -395,3 +395,5 @@ export default function PolicyQA() {
     </div>
   );
 }
+
+
