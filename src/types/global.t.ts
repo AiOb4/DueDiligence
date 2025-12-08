@@ -61,7 +61,7 @@ declare global {
        * @param id Unique identifier for the chat
        * @param promptText The user input for the chat
        */
-      sendChat: (id: number, promptText: string) => void;
+      sendChat: (id: number, promptText: string, userContext?: string) => void;
 
       /**
        * Subscribe to chunked responses from the chat stream.

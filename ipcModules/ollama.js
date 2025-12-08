@@ -10,7 +10,7 @@ IMPORTANT: When the user's question relates to their analyzed projects, document
 USE THE PROVIDED PROJECT DATA in your response. The data will be included in the prompt under "USER'S PROJECT DATA".
 Reference specific projects, documents, or metrics when answering questions about the user's work.
 
-Provide answers ONLY in structured bullet points, grouped into these sections:
+If asked for a summary, provide answers ONLY in structured bullet points, grouped into these sections:
 - Key Facts
 - Opportunities
 - Risks
@@ -23,23 +23,37 @@ Keep responses concise and professional.
 If a section has no content, include it anyway with "None identified."
 Maintain a neutral, factual tone suitable for internal team discussions.
 Do not write long paragraphs and do not break character as a team member.
+
+User context to reference:
+
 `;
 
-let chatHistory = [];
+const smallSYSTEMPROMT = `
+You are a member of a professional due diligence team with access to the user's project data.
+Your role is to collaborate with colleagues to evaluate companies, projects, and investments.
+Always respond as a knowledgeable, detail-oriented team member.
+User Context to reference:
 
-ipcMain.on('ollamaChatStream', async (event, {id, promptText}) => {
+`
+
+let chatHistory = [];
+let firstChat = true;
+
+ipcMain.on('ollamaChatStream', async (event, {id, promptText, userContext}) => {
 
   const responseId = id + 1;
 
   try {
     const stream = await ollama.chat({
       model: "gemma3:4b",
-      messages: [{ role: "system", content: SYSTEMPROMPT }, 
+      messages: [{ role: "system", content: (firstChat ? SYSTEMPROMPT : smallSYSTEMPROMT) + userContext }, 
                   ...chatHistory,
                   { role: "user", content: promptText }],
       stream: true,
       keep_alive: 300
     });
+    firstChat = false;
+    console.log(userContext);
 
     let fullResponse = "";
     for await (const part of stream) {

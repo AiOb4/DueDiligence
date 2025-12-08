@@ -36,7 +36,7 @@ ipcMain.handle("saveCodeAnalysis", async (event, { projectData }) => {
     // Write to file
     fs.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2));
 
-    console.log(`✅ Project saved: ${filename}`);
+    console.log(`Project saved: ${filename}`);
     return { success: true, fileId: filename };
   } catch (error) {
     console.error("Error saving project:", error);
@@ -106,4 +106,4 @@ ipcMain.handle("getProjectData", async (event, { projectName }) => {
   }
 });
 
-console.log("📦 Project storage module loaded");
+console.log("Project storage module loaded");

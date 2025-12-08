@@ -52,7 +52,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     try {
       let contextParts: string[] = [];
 
-      // 1. Get saved code analyses from local storage
+      // Get saved code analyses from local storage
       try {
         const projectsResult = await window.api.getProjectList();
         if (projectsResult.success && projectsResult.projects.length > 0) {
@@ -70,7 +70,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         console.error("Failed to fetch projects:", err);
       }
 
-      // 2. Get document summaries from Firebase
+      // Get document summaries from Firebase
       try {
         const docsRef = collection(db, "userStats", user.uid, "documents");
         const q = query(docsRef, orderBy("createdAt", "desc"), limit(10));
@@ -91,7 +91,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         console.error("Failed to fetch documents:", err);
       }
 
-      // 3. Get indexed policies
+      // Get indexed policies
       try {
         const policiesResult = await window.api.policyListPolicies();
         if (policiesResult.success && policiesResult.totalDocs > 0) {
@@ -115,9 +115,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     }
   }, [])
 
-  // ✅ FIX 2: Move handlers OUTSIDE useEffect + useCallback
   const handleChunk = useCallback((data: ChunkEvent) => {
-    console.log(`📦 Browser chunk ${data.id}: "${data.chunk}"`)
     if (!streamingRef.current.has(data.id)) return
 
     setMessages(prev =>
@@ -135,7 +133,6 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
   }, [scrollToBottom])
 
   const handleDone = useCallback((data: DoneEvent) => {
-    console.log(`✅ Browser stream done: ${data.id}`)
     streamingRef.current.delete(data.id)
     if (streamingRef.current.size === 0) {
       setIsStreaming(false)
@@ -165,13 +162,12 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
       removeListenersRef.current.removeChunk?.()
       removeListenersRef.current.removeDone?.()
     }
-  }, [isOpen, handleChunk, handleDone]) // ✅ Add dependencies
+  }, [isOpen, handleChunk, handleDone])
 
-  // ✅ FIX 3: handleSend uses isStreaming from ref + includes user context
   const handleSend = useCallback(async () => {
     if (inputValue.trim() === "" || isStreaming) return
 
-    const userMessageId = Date.now() // ✅ Fix ID collision
+    const userMessageId = Date.now()
     const responseId = userMessageId + 1
 
     const userMessage: Message = {
@@ -200,16 +196,15 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     const userContext = await getUserContext();
 
     // Combine user's question with their project data
-    const enhancedPrompt = userContext
+    const enhancedConext = userContext
       ? `${userContext}User Question: ${originalInput}`
       : originalInput;
 
-    console.log(`🚀 Send ID=${userMessageId}, expect response ID=${responseId}`)
-    console.log(`📊 Context included: ${userContext ? 'YES' : 'NO'}`)
-    window.api.sendChat(userMessageId, enhancedPrompt)
+    console.log(`Send ID=${userMessageId}, expect response ID=${responseId}`);
+    console.log(`Context included: ${userContext ? 'YES' : 'NO'}`);
+    window.api.sendChat(userMessageId, originalInput, userContext);
   }, [inputValue, isStreaming, getUserContext])
 
-  // ✅ FIX 4: handleKeyPress uses handleSend
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -255,7 +250,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
           placeholder={isStreaming ? "Please wait..." : "Ask me anything about your projects..."}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyPress} // ✅ onKeyDown instead of onKeyPress
+          onKeyDown={handleKeyPress}
           rows={1}
           disabled={isStreaming}
         />

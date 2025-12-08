@@ -171,7 +171,7 @@ app.whenReady().then(async () => {
   
   createWindow();
 
-  // ✅ POLICY QA: Load saved policy index on startup
+  // POLICY QA: Load saved policy index on startup
   try {
     const reloadResult = loadPolicyIndexFromDisk();
     console.log("Policy index reload on startup:", reloadResult);
